@@ -12,9 +12,9 @@ concurrency = ["greenlet"]
 asyncio_mode = "strict"
 
 [tool.bumpversion]
-current_version = 0.0.0
-commit = True
-tag = True
+current_version = "0.0.0"
+commit = true
+tag = true
 
 [tool.bumpversion:file:httpx_oauth/__init__.py]
 search = __version__ = "{current_version}"
