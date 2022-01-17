@@ -1,1 +1,2 @@
 httpx==0.21.3
+jwcrypto==1.0
