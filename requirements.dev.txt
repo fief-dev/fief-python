@@ -1,0 +1,15 @@
+-r requirements.txt
+
+black
+bumpversion
+coverage[toml]
+flit
+greenlet
+isort
+mypy
+pytest
+pytest-cov
+pytest-asyncio
+pytest-mock
+respx
+tryceratops

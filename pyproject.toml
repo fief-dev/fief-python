@@ -1,0 +1,51 @@
+[tool.isort]
+profile = "black"
+
+[[tool.mypy.overrides]]
+module = "jwcrypto.*"
+ignore_missing_imports = true
+
+[tool.coverage.run]
+concurrency = ["greenlet"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+
+[tool.bumpversion]
+current_version = 0.0.0
+commit = True
+tag = True
+
+[tool.bumpversion:file:httpx_oauth/__init__.py]
+search = __version__ = "{current_version}"
+replace = __version__ = "{new_version}"
+
+[build-system]
+requires = ["flit_core >=2,<3"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.metadata]
+module = "fief_client"
+dist-name = "fief-client"
+author = "François Voron"
+author-email = "contact@fief.dev"
+home-page = "https://github.com/fief-dev/fief-python"
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3 :: Only",
+]
+description-file = "README.md"
+requires-python = ">=3.7"
+requires = [
+    "httpx >=0.21.3,<0.22.0",
+]
+
+[tool.flit.metadata.requires-extra]
+
+[tool.flit.metadata.urls]
+Documentation = "https://github.com/fief-dev/fief-python"
