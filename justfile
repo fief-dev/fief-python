@@ -9,3 +9,6 @@ lint:
 
 test:
   pytest --cov fief_client/ --cov-report=term-missing
+
+bumpversion version:
+  bumpversion {{version}}
