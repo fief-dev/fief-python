@@ -1,3 +1,4 @@
+import contextlib
 import json
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Tuple
@@ -28,6 +29,7 @@ class Fief:
     client_id: str
     client_secret: str
     encryption_key: Optional[jwk.JWK] = None
+    internal_host: Optional[str] = None
 
     _openid_configuration: Optional[Dict[str, Any]] = None
     _jwks: Optional[jwk.JWKSet] = None
@@ -37,18 +39,21 @@ class Fief:
         host: str,
         client_id: str,
         client_secret: str,
+        *,
         encryption_key: Optional[str] = None,
+        internal_host: Optional[str] = None,
     ) -> None:
         self.host = host
         self.client_id = client_id
         self.client_secret = client_secret
-
         if encryption_key is not None:
             self.encryption_key = jwk.JWK.from_json(encryption_key)
+        self.internal_host = internal_host
 
     def auth_url(
         self,
         redirect_uri: str,
+        *,
         state: str = None,
         scope: Optional[List[str]] = None,
         extras_params: Optional[Mapping[str, str]] = None,
@@ -80,11 +85,18 @@ class Fief:
         userinfo = self._decode_id_token(token_response.id_token)
         return token_response, userinfo
 
+    @contextlib.contextmanager
+    def _get_httpx_client(self):
+        headers = {"Host": self.host}
+        base_url = self.host if self.internal_host is None else self.internal_host
+        with httpx.Client(base_url=base_url, headers=headers) as client:
+            yield client
+
     def _get_openid_configuration(self) -> Dict[str, Any]:
         if self._openid_configuration is not None:
             return self._openid_configuration
 
-        with httpx.Client(base_url=self.host) as client:
+        with self._get_httpx_client() as client:
             response = client.get("/.well-known/openid-configuration")
             json = response.json()
             self._openid_configuration = json
@@ -95,14 +107,14 @@ class Fief:
             return self._jwks
 
         jwks_uri = self._get_openid_configuration()["jwks_uri"]
-        with httpx.Client() as client:
+        with self._get_httpx_client() as client:
             response = client.get(jwks_uri)
             self._jwks = jwk.JWKSet.from_json(response.text)
             return self._jwks
 
     def _auth_exchange_token(self, code: str, redirect_uri) -> FiefTokenResponse:
         token_endpoint = self._get_openid_configuration()["token_endpoint"]
-        with httpx.Client() as client:
+        with self._get_httpx_client() as client:
             response = client.post(
                 token_endpoint,
                 data={

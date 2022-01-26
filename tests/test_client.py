@@ -15,7 +15,7 @@ HOSTNAME = "https://bretagne.fief.dev"
 def mock_api_requests(
     signature_key: jwk.JWK,
 ) -> Generator[respx.MockRouter, None, None]:
-    with respx.mock(base_url=HOSTNAME, assert_all_mocked=True) as respx_mock:
+    with respx.mock(assert_all_mocked=True) as respx_mock:
         openid_configuration_route = respx_mock.get("/.well-known/openid-configuration")
         openid_configuration_route.return_value = Response(
             200,
@@ -34,9 +34,14 @@ def mock_api_requests(
         yield respx_mock
 
 
-@pytest.fixture(scope="module")
-def fief_client() -> Fief:
-    return Fief("https://bretagne.fief.dev", "CLIENT_ID", "CLIENT_SECRET")
+@pytest.fixture(scope="module", params=[None, "http://localhost:8000"])
+def fief_client(request) -> Fief:
+    return Fief(
+        "https://bretagne.fief.dev",
+        "CLIENT_ID",
+        "CLIENT_SECRET",
+        internal_host=request.param,
+    )
 
 
 @pytest.fixture(scope="module")
@@ -45,13 +50,13 @@ def fief_client_encryption_key(encryption_key: jwk.JWK) -> Fief:
         "https://bretagne.fief.dev",
         "CLIENT_ID",
         "CLIENT_SECRET",
-        encryption_key.export(),
+        encryption_key=encryption_key.export(),
     )
 
 
 class TestAuthURL:
     @pytest.mark.parametrize(
-        "state,scope,extra_params,expected_params",
+        "state,scope,extras_params,expected_params",
         [
             (None, None, None, ""),
             ("STATE", None, None, "&state=STATE"),
@@ -63,17 +68,30 @@ class TestAuthURL:
         self,
         state: Optional[str],
         scope: Optional[List[str]],
-        extra_params: Optional[Mapping[str, str]],
+        extras_params: Optional[Mapping[str, str]],
         expected_params: str,
         fief_client: Fief,
+        mock_api_requests: respx.MockRouter,
     ):
         authorize_url = fief_client.auth_url(
-            "https://www.bretagne.duchy/callback", state, scope, extra_params
+            "https://www.bretagne.duchy/callback",
+            state=state,
+            scope=scope,
+            extras_params=extras_params,
         )
         assert (
             authorize_url
             == f"https://bretagne.fief.dev/auth/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=https%3A%2F%2Fwww.bretagne.duchy%2Fcallback{expected_params}"
         )
+
+        assert mock_api_requests.calls.last is not None
+        request, _ = mock_api_requests.calls.last
+        assert request.headers["Host"] == fief_client.host
+        url = str(request.url)
+        if fief_client.internal_host is not None:
+            assert url.startswith(fief_client.internal_host)
+        else:
+            assert url.startswith(fief_client.host)
 
 
 class TestAuthCallback:

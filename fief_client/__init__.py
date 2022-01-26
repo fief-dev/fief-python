@@ -1,9 +1,9 @@
 "Fief client for Python."
 from fief_client.client import (
     Fief,
-    FiefTokenResponse,
     FiefError,
     FiefIdTokenInvalidError,
+    FiefTokenResponse,
 )
 
 __version__ = "0.1.0"
