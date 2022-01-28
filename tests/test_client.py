@@ -34,13 +34,13 @@ def mock_api_requests(
         yield respx_mock
 
 
-@pytest.fixture(scope="module", params=[None, "http://localhost:8000"])
+@pytest.fixture(scope="module", params=[None, "forced_host.fief.dev"])
 def fief_client(request) -> Fief:
     return Fief(
         "https://bretagne.fief.dev",
         "CLIENT_ID",
         "CLIENT_SECRET",
-        internal_host=request.param,
+        host=request.param,
     )
 
 
@@ -86,12 +86,13 @@ class TestAuthURL:
 
         assert mock_api_requests.calls.last is not None
         request, _ = mock_api_requests.calls.last
-        assert request.headers["Host"] == fief_client.host
         url = str(request.url)
-        if fief_client.internal_host is not None:
-            assert url.startswith(fief_client.internal_host)
+        assert url.startswith(fief_client.base_url)
+
+        if fief_client.host is not None:
+            assert request.headers["Host"] == fief_client.host
         else:
-            assert url.startswith(fief_client.host)
+            assert request.url.host == request.headers["Host"]
 
 
 class TestAuthCallback:

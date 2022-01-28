@@ -25,30 +25,30 @@ class FiefIdTokenInvalidError(FiefError):
 
 
 class Fief:
-    host: str
+    base_url: str
     client_id: str
     client_secret: str
     encryption_key: Optional[jwk.JWK] = None
-    internal_host: Optional[str] = None
+    host: Optional[str] = None
 
     _openid_configuration: Optional[Dict[str, Any]] = None
     _jwks: Optional[jwk.JWKSet] = None
 
     def __init__(
         self,
-        host: str,
+        base_url: str,
         client_id: str,
         client_secret: str,
         *,
         encryption_key: Optional[str] = None,
-        internal_host: Optional[str] = None,
+        host: Optional[str] = None,
     ) -> None:
-        self.host = host
+        self.base_url = base_url
         self.client_id = client_id
         self.client_secret = client_secret
         if encryption_key is not None:
             self.encryption_key = jwk.JWK.from_json(encryption_key)
-        self.internal_host = internal_host
+        self.host = host
 
     def auth_url(
         self,
@@ -87,9 +87,10 @@ class Fief:
 
     @contextlib.contextmanager
     def _get_httpx_client(self):
-        headers = {"Host": self.host}
-        base_url = self.host if self.internal_host is None else self.internal_host
-        with httpx.Client(base_url=base_url, headers=headers) as client:
+        headers = {}
+        if self.host is not None:
+            headers = {"Host": self.host}
+        with httpx.Client(base_url=self.base_url, headers=headers) as client:
             yield client
 
     def _get_openid_configuration(self) -> Dict[str, Any]:
