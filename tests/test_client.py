@@ -1,3 +1,4 @@
+import json
 from typing import Generator, List, Mapping, Optional
 
 import pytest
@@ -6,7 +7,12 @@ import respx
 from httpx import Response
 from jwcrypto import jwk
 
-from fief_client.client import Fief, FiefAsync, FiefIdTokenInvalidError
+from fief_client.client import (
+    Fief,
+    FiefAsync,
+    FiefIdTokenInvalidError,
+    FiefTokenResponse,
+)
 
 HOSTNAME = "https://bretagne.fief.dev"
 
@@ -61,6 +67,16 @@ def fief_async_client(request) -> FiefAsync:
         "CLIENT_ID",
         "CLIENT_SECRET",
         host=request.param,
+    )
+
+
+def test_serializable_fief_token_response():
+    token_response = FiefTokenResponse(
+        access_token="ACCESS_TOKEN", id_token="ID_TOKEN", token_type="bearer"
+    )
+    assert (
+        json.dumps(token_response)
+        == '{"access_token": "ACCESS_TOKEN", "id_token": "ID_TOKEN", "token_type": "bearer"}'
     )
 
 
@@ -164,8 +180,8 @@ class TestAuthCallback:
         token_response, userinfo = fief_client.auth_callback(
             "CODE", "https://www.bretagne.duchy/callback"
         )
-        assert token_response.access_token == "ACCESS_TOKEN"
-        assert token_response.id_token == signed_id_token
+        assert token_response["access_token"] == "ACCESS_TOKEN"
+        assert token_response["id_token"] == signed_id_token
 
         assert isinstance(userinfo, dict)
         assert userinfo["sub"] == "USER_ID"
@@ -189,8 +205,8 @@ class TestAuthCallback:
         token_response, userinfo = await fief_async_client.auth_callback(
             "CODE", "https://www.bretagne.duchy/callback"
         )
-        assert token_response.access_token == "ACCESS_TOKEN"
-        assert token_response.id_token == signed_id_token
+        assert token_response["access_token"] == "ACCESS_TOKEN"
+        assert token_response["id_token"] == signed_id_token
 
         assert isinstance(userinfo, dict)
         assert userinfo["sub"] == "USER_ID"

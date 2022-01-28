@@ -1,6 +1,12 @@
+import sys
+
+if sys.version_info < (3, 8):
+    from typing_extensions import TypedDict
+else:
+    from typing import TypedDict
+
 import contextlib
 import json
-from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 from urllib.parse import urlencode
 
@@ -11,8 +17,7 @@ from jwcrypto.common import JWException
 HTTPXClient = Union[httpx.Client, httpx.AsyncClient]
 
 
-@dataclass
-class FiefTokenResponse:
+class FiefTokenResponse(TypedDict):
     access_token: str
     id_token: str
     token_type: str
@@ -134,7 +139,7 @@ class Fief(BaseFief):
     ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
         token_response = self._auth_exchange_token(code, redirect_uri)
         jwks = self._get_jwks()
-        userinfo = self._decode_id_token(token_response.id_token, jwks)
+        userinfo = self._decode_id_token(token_response["id_token"], jwks)
         return token_response, userinfo
 
     @contextlib.contextmanager
@@ -179,7 +184,7 @@ class Fief(BaseFief):
 
             response.raise_for_status()
 
-            return FiefTokenResponse(**response.json())
+            return response.json()
 
 
 class FiefAsync(BaseFief):
@@ -205,7 +210,7 @@ class FiefAsync(BaseFief):
     ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
         token_response = await self._auth_exchange_token(code, redirect_uri)
         jwks = await self._get_jwks()
-        userinfo = self._decode_id_token(token_response.id_token, jwks)
+        userinfo = self._decode_id_token(token_response["id_token"], jwks)
         return token_response, userinfo
 
     @contextlib.asynccontextmanager
@@ -250,4 +255,4 @@ class FiefAsync(BaseFief):
 
             response.raise_for_status()
 
-            return FiefTokenResponse(**response.json())
+            return response.json()
