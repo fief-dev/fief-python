@@ -1,6 +1,7 @@
 "Fief client for Python."
 from fief_client.client import (
     Fief,
+    FiefAsync,
     FiefError,
     FiefIdTokenInvalidError,
     FiefTokenResponse,
@@ -8,4 +9,10 @@ from fief_client.client import (
 
 __version__ = "0.3.0"
 
-__all__ = ["Fief", "FiefTokenResponse", "FiefError", "FiefIdTokenInvalidError"]
+__all__ = [
+    "Fief",
+    "FiefAsync",
+    "FiefTokenResponse",
+    "FiefError",
+    "FiefIdTokenInvalidError",
+]

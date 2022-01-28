@@ -8,7 +8,6 @@ import httpx
 from jwcrypto import jwk, jwt
 from jwcrypto.common import JWException
 
-
 HTTPXClient = Union[httpx.Client, httpx.AsyncClient]
 
 
