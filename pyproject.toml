@@ -12,15 +12,18 @@ concurrency = ["greenlet"]
 asyncio_mode = "strict"
 
 [build-system]
-requires = ["flit_core >=2,<3"]
+requires = ["flit_core >=3.2,<4"]
 build-backend = "flit_core.buildapi"
 
-[tool.flit.metadata]
-module = "fief_client"
-dist-name = "fief-client"
-author = "François Voron"
-author-email = "contact@fief.dev"
-home-page = "https://github.com/fief-dev/fief-python"
+[tool.flit.module]
+name = "fief_client"
+
+[project]
+name = "fief-client"
+authors = [
+  { name = "François Voron", email = "contact@fief.dev" }
+]
+description = "Fief Client for Python"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Intended Audience :: Developers",
@@ -30,15 +33,34 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3 :: Only",
 ]
-description-file = "README.md"
+dynamic = ["version"]
 requires-python = ">=3.7"
-requires = [
-    "httpx >=0.21.3,<0.22.0",
+dependencies = [
+    "httpx >=0.21.3,<0.23.0",
     "jwcrypto ==1.0",
     "typing-extensions >=4.0.1; python_version < '3.8'",
 ]
 
-[tool.flit.metadata.requires-extra]
+[project.optional-dependencies]
+dev = [
+  "black",
+  "bumpversion",
+  "codecov",
+  "coverage[toml]",
+  "flit",
+  "greenlet",
+  "isort",
+  "mypy",
+  "pytest",
+  "pytest-cov",
+  "pytest-asyncio",
+  "pytest-mock",
+  "respx",
+  "tryceratops",
+]
 
-[tool.flit.metadata.urls]
+[project.urls]
 Documentation = "https://github.com/fief-dev/fief-python"
+
+[tool.flit.sdist]
+exclude = ["tests"]
