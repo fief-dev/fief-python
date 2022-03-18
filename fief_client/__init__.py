@@ -7,7 +7,7 @@ from fief_client.client import (
     FiefTokenResponse,
 )
 
-__version__ = "0.3.3"
+__version__ = "0.3.4"
 
 __all__ = [
     "Fief",
