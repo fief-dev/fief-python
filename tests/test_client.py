@@ -40,14 +40,9 @@ def mock_api_requests(
         yield respx_mock
 
 
-@pytest.fixture(scope="module", params=[None, "forced_host.fief.dev"])
-def fief_client(request) -> Fief:
-    return Fief(
-        "https://bretagne.fief.dev",
-        "CLIENT_ID",
-        "CLIENT_SECRET",
-        host=request.param,
-    )
+@pytest.fixture(scope="module")
+def fief_client() -> Fief:
+    return Fief("https://bretagne.fief.dev", "CLIENT_ID", "CLIENT_SECRET")
 
 
 @pytest.fixture(scope="module")
@@ -60,14 +55,9 @@ def fief_client_encryption_key(encryption_key: jwk.JWK) -> Fief:
     )
 
 
-@pytest.fixture(scope="module", params=[None, "forced_host.fief.dev"])
-def fief_async_client(request) -> FiefAsync:
-    return FiefAsync(
-        "https://bretagne.fief.dev",
-        "CLIENT_ID",
-        "CLIENT_SECRET",
-        host=request.param,
-    )
+@pytest.fixture(scope="module")
+def fief_async_client() -> FiefAsync:
+    return FiefAsync("https://bretagne.fief.dev", "CLIENT_ID", "CLIENT_SECRET")
 
 
 def test_serializable_fief_token_response():
@@ -115,10 +105,7 @@ class TestAuthURL:
         url = str(request.url)
         assert url.startswith(fief_client.base_url)
 
-        if fief_client.host is not None:
-            assert request.headers["Host"] == fief_client.host
-        else:
-            assert request.url.host == request.headers["Host"]
+        assert request.url.host == request.headers["Host"]
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -155,10 +142,7 @@ class TestAuthURL:
         url = str(request.url)
         assert url.startswith(fief_async_client.base_url)
 
-        if fief_async_client.host is not None:
-            assert request.headers["Host"] == fief_async_client.host
-        else:
-            assert request.url.host == request.headers["Host"]
+        assert request.url.host == request.headers["Host"]
 
 
 class TestAuthCallback:
