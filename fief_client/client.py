@@ -112,6 +112,23 @@ class BaseFief:
             },
         )
 
+    def _get_auth_refresh_token_request(
+        self,
+        client: HTTPXClient,
+        *,
+        endpoint: str,
+        refresh_token: str,
+        scope: Optional[List[str]] = None,
+    ) -> httpx.Request:
+        data = {
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+        }
+        if scope is not None:
+            data["scope"] = " ".join(scope)
+
+        return client.build_request("POST", endpoint, data=data)
+
 
 class Fief(BaseFief):
     def auth_url(
@@ -135,6 +152,26 @@ class Fief(BaseFief):
         self, code: str, redirect_uri: str
     ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
         token_response = self._auth_exchange_token(code, redirect_uri)
+        jwks = self._get_jwks()
+        userinfo = self._decode_id_token(token_response["id_token"], jwks)
+        return token_response, userinfo
+
+    def auth_refresh_token(
+        self, refresh_token: str, *, scope: Optional[List[str]] = None
+    ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
+        token_endpoint = self._get_openid_configuration()["token_endpoint"]
+        with self._get_httpx_client() as client:
+            request = self._get_auth_refresh_token_request(
+                client,
+                endpoint=token_endpoint,
+                refresh_token=refresh_token,
+                scope=scope,
+            )
+            response = client.send(request)
+
+            response.raise_for_status()
+
+            token_response = response.json()
         jwks = self._get_jwks()
         userinfo = self._decode_id_token(token_response["id_token"], jwks)
         return token_response, userinfo
@@ -203,6 +240,27 @@ class FiefAsync(BaseFief):
         self, code: str, redirect_uri: str
     ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
         token_response = await self._auth_exchange_token(code, redirect_uri)
+        jwks = await self._get_jwks()
+        userinfo = self._decode_id_token(token_response["id_token"], jwks)
+        return token_response, userinfo
+
+    async def auth_refresh_token(
+        self, refresh_token: str, *, scope: Optional[List[str]] = None
+    ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
+        token_endpoint = (await self._get_openid_configuration())["token_endpoint"]
+        async with self._get_httpx_client() as client:
+            request = self._get_auth_refresh_token_request(
+                client,
+                endpoint=token_endpoint,
+                refresh_token=refresh_token,
+                scope=scope,
+            )
+            response = await client.send(request)
+
+            response.raise_for_status()
+
+            token_response = response.json()
+
         jwks = await self._get_jwks()
         userinfo = self._decode_id_token(token_response["id_token"], jwks)
         return token_response, userinfo

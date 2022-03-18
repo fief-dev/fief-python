@@ -196,6 +196,55 @@ class TestAuthCallback:
         assert userinfo["sub"] == "USER_ID"
 
 
+class TestAuthRefreshToken:
+    def test_valid_response(
+        self,
+        fief_client: Fief,
+        mock_api_requests: respx.MockRouter,
+        signed_id_token: str,
+    ):
+        mock_api_requests.post("/auth/token").return_value = Response(
+            200,
+            json={
+                "access_token": "ACCESS_TOKEN",
+                "id_token": signed_id_token,
+                "token_type": "bearer",
+            },
+        )
+
+        token_response, userinfo = fief_client.auth_refresh_token("REFRESH_TOKEN")
+        assert token_response["access_token"] == "ACCESS_TOKEN"
+        assert token_response["id_token"] == signed_id_token
+
+        assert isinstance(userinfo, dict)
+        assert userinfo["sub"] == "USER_ID"
+
+    @pytest.mark.asyncio
+    async def test_valid_response_async(
+        self,
+        fief_async_client: FiefAsync,
+        mock_api_requests: respx.MockRouter,
+        signed_id_token: str,
+    ):
+        mock_api_requests.post("/auth/token").return_value = Response(
+            200,
+            json={
+                "access_token": "ACCESS_TOKEN",
+                "id_token": signed_id_token,
+                "token_type": "bearer",
+            },
+        )
+
+        token_response, userinfo = await fief_async_client.auth_refresh_token(
+            "REFRESH_TOKEN"
+        )
+        assert token_response["access_token"] == "ACCESS_TOKEN"
+        assert token_response["id_token"] == signed_id_token
+
+        assert isinstance(userinfo, dict)
+        assert userinfo["sub"] == "USER_ID"
+
+
 class TestDecodeIdToken:
     def test_signed_valid(
         self, fief_client: Fief, signed_id_token: str, signature_key: jwk.JWK
