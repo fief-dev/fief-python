@@ -21,6 +21,8 @@ class FiefTokenResponse(TypedDict):
     access_token: str
     id_token: str
     token_type: str
+    expires_in: int
+    refresh_token: Optional[str]
 
 
 class FiefError(Exception):

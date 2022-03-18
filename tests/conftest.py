@@ -23,8 +23,8 @@ def encryption_key(keys: jwk.JWKSet) -> jwk.JWK:
 
 
 @pytest.fixture(scope="session")
-def generate_id_token(signature_key: jwk.JWK, encryption_key: jwk.JWK):
-    def _generate_id_token(encrypt: bool) -> str:
+def generate_token(signature_key: jwk.JWK, encryption_key: jwk.JWK):
+    def _generate_token(encrypt: bool) -> str:
         iat = int(datetime.now(timezone.utc).timestamp())
         exp = iat + 3600
 
@@ -51,14 +51,19 @@ def generate_id_token(signature_key: jwk.JWK, encryption_key: jwk.JWK):
 
         return signed_token.serialize()
 
-    return _generate_id_token
+    return _generate_token
 
 
 @pytest.fixture(scope="session")
-def signed_id_token(generate_id_token: Callable[..., str]) -> str:
-    return generate_id_token(encrypt=False)
+def access_token(generate_token: Callable[..., str]) -> str:
+    return generate_token(encrypt=False)
 
 
 @pytest.fixture(scope="session")
-def encrypted_id_token(generate_id_token: Callable[..., str]) -> str:
-    return generate_id_token(encrypt=True)
+def signed_id_token(generate_token: Callable[..., str]) -> str:
+    return generate_token(encrypt=False)
+
+
+@pytest.fixture(scope="session")
+def encrypted_id_token(generate_token: Callable[..., str]) -> str:
+    return generate_token(encrypt=True)

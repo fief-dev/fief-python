@@ -150,12 +150,13 @@ class TestAuthCallback:
         self,
         fief_client: Fief,
         mock_api_requests: respx.MockRouter,
+        access_token: str,
         signed_id_token: str,
     ):
         mock_api_requests.post("/auth/token").return_value = Response(
             200,
             json={
-                "access_token": "ACCESS_TOKEN",
+                "access_token": access_token,
                 "id_token": signed_id_token,
                 "token_type": "bearer",
             },
@@ -164,7 +165,7 @@ class TestAuthCallback:
         token_response, userinfo = fief_client.auth_callback(
             "CODE", "https://www.bretagne.duchy/callback"
         )
-        assert token_response["access_token"] == "ACCESS_TOKEN"
+        assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token
 
         assert isinstance(userinfo, dict)
@@ -175,12 +176,13 @@ class TestAuthCallback:
         self,
         fief_async_client: FiefAsync,
         mock_api_requests: respx.MockRouter,
+        access_token: str,
         signed_id_token: str,
     ):
         mock_api_requests.post("/auth/token").return_value = Response(
             200,
             json={
-                "access_token": "ACCESS_TOKEN",
+                "access_token": access_token,
                 "id_token": signed_id_token,
                 "token_type": "bearer",
             },
@@ -189,7 +191,7 @@ class TestAuthCallback:
         token_response, userinfo = await fief_async_client.auth_callback(
             "CODE", "https://www.bretagne.duchy/callback"
         )
-        assert token_response["access_token"] == "ACCESS_TOKEN"
+        assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token
 
         assert isinstance(userinfo, dict)
@@ -201,19 +203,20 @@ class TestAuthRefreshToken:
         self,
         fief_client: Fief,
         mock_api_requests: respx.MockRouter,
+        access_token: str,
         signed_id_token: str,
     ):
         mock_api_requests.post("/auth/token").return_value = Response(
             200,
             json={
-                "access_token": "ACCESS_TOKEN",
+                "access_token": access_token,
                 "id_token": signed_id_token,
                 "token_type": "bearer",
             },
         )
 
         token_response, userinfo = fief_client.auth_refresh_token("REFRESH_TOKEN")
-        assert token_response["access_token"] == "ACCESS_TOKEN"
+        assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token
 
         assert isinstance(userinfo, dict)
@@ -224,12 +227,13 @@ class TestAuthRefreshToken:
         self,
         fief_async_client: FiefAsync,
         mock_api_requests: respx.MockRouter,
+        access_token: str,
         signed_id_token: str,
     ):
         mock_api_requests.post("/auth/token").return_value = Response(
             200,
             json={
-                "access_token": "ACCESS_TOKEN",
+                "access_token": access_token,
                 "id_token": signed_id_token,
                 "token_type": "bearer",
             },
@@ -238,7 +242,7 @@ class TestAuthRefreshToken:
         token_response, userinfo = await fief_async_client.auth_refresh_token(
             "REFRESH_TOKEN"
         )
-        assert token_response["access_token"] == "ACCESS_TOKEN"
+        assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token
 
         assert isinstance(userinfo, dict)
