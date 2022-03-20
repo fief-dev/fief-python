@@ -1,8 +1,12 @@
+import uuid
 from datetime import datetime, timezone
 from os import path
-from typing import Callable
+from typing import Callable, Generator
 
 import pytest
+import pytest_asyncio
+import respx
+from httpx import Response
 from jwcrypto import jwk, jwt
 
 
@@ -23,13 +27,18 @@ def encryption_key(keys: jwk.JWKSet) -> jwk.JWK:
 
 
 @pytest.fixture(scope="session")
-def generate_token(signature_key: jwk.JWK, encryption_key: jwk.JWK):
+def user_id() -> str:
+    return str(uuid.uuid4())
+
+
+@pytest.fixture(scope="session")
+def generate_token(signature_key: jwk.JWK, encryption_key: jwk.JWK, user_id: str):
     def _generate_token(encrypt: bool, **kwargs) -> str:
         iat = int(datetime.now(timezone.utc).timestamp())
         exp = iat + 3600
 
         claims = {
-            "sub": "USER_ID",
+            "sub": user_id,
             "email": "anne@bretagne.duchy",
             "iss": "https://bretagne.fief.dev",
             "aud": ["CLIENT_ID"],
@@ -68,3 +77,28 @@ def signed_id_token(generate_token: Callable[..., str]) -> str:
 @pytest.fixture(scope="session")
 def encrypted_id_token(generate_token: Callable[..., str]) -> str:
     return generate_token(encrypt=True)
+
+
+@pytest_asyncio.fixture(scope="module", autouse=True)
+def mock_api_requests(
+    signature_key: jwk.JWK,
+) -> Generator[respx.MockRouter, None, None]:
+    HOSTNAME = "https://bretagne.fief.dev"
+
+    with respx.mock(assert_all_mocked=True, assert_all_called=False) as respx_mock:
+        openid_configuration_route = respx_mock.get("/.well-known/openid-configuration")
+        openid_configuration_route.return_value = Response(
+            200,
+            json={
+                "authorization_endpoint": f"{HOSTNAME}/auth/authorize",
+                "token_endpoint": f"{HOSTNAME}/auth/token",
+                "jwks_uri": f"{HOSTNAME}/.well-known/jwks.json",
+            },
+        )
+
+        jwks_route = respx_mock.get("/.well-known/jwks.json")
+        jwks_route.return_value = Response(
+            200, json={"keys": [signature_key.export(private_key=False, as_dict=True)]}
+        )
+
+        yield respx_mock

@@ -59,6 +59,11 @@ dev = [
   "tryceratops",
 ]
 
+fastapi = [
+  "fastapi",
+  "makefun ==1.13.1",
+]
+
 [project.urls]
 Documentation = "https://github.com/fief-dev/fief-python"
 

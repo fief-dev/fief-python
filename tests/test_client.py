@@ -1,8 +1,7 @@
 import json
-from typing import Generator, List, Mapping, Optional
+from typing import List, Mapping, Optional
 
 import pytest
-import pytest_asyncio
 import respx
 from httpx import Response
 from jwcrypto import jwk
@@ -16,31 +15,6 @@ from fief_client.client import (
     FiefIdTokenInvalid,
     FiefTokenResponse,
 )
-
-HOSTNAME = "https://bretagne.fief.dev"
-
-
-@pytest_asyncio.fixture(scope="module", autouse=True)
-def mock_api_requests(
-    signature_key: jwk.JWK,
-) -> Generator[respx.MockRouter, None, None]:
-    with respx.mock(assert_all_mocked=True) as respx_mock:
-        openid_configuration_route = respx_mock.get("/.well-known/openid-configuration")
-        openid_configuration_route.return_value = Response(
-            200,
-            json={
-                "authorization_endpoint": f"{HOSTNAME}/auth/authorize",
-                "token_endpoint": f"{HOSTNAME}/auth/token",
-                "jwks_uri": f"{HOSTNAME}/.well-known/jwks.json",
-            },
-        )
-
-        jwks_route = respx_mock.get("/.well-known/jwks.json")
-        jwks_route.return_value = Response(
-            200, json={"keys": [signature_key.export(private_key=False, as_dict=True)]}
-        )
-
-        yield respx_mock
 
 
 @pytest.fixture(scope="module")
@@ -159,6 +133,7 @@ class TestAuthCallback:
         mock_api_requests: respx.MockRouter,
         access_token: str,
         signed_id_token: str,
+        user_id: str,
     ):
         mock_api_requests.post("/auth/token").return_value = Response(
             200,
@@ -176,7 +151,7 @@ class TestAuthCallback:
         assert token_response["id_token"] == signed_id_token
 
         assert isinstance(userinfo, dict)
-        assert userinfo["sub"] == "USER_ID"
+        assert userinfo["sub"] == user_id
 
     @pytest.mark.asyncio
     async def test_valid_response_async(
@@ -185,6 +160,7 @@ class TestAuthCallback:
         mock_api_requests: respx.MockRouter,
         access_token: str,
         signed_id_token: str,
+        user_id: str,
     ):
         mock_api_requests.post("/auth/token").return_value = Response(
             200,
@@ -202,7 +178,7 @@ class TestAuthCallback:
         assert token_response["id_token"] == signed_id_token
 
         assert isinstance(userinfo, dict)
-        assert userinfo["sub"] == "USER_ID"
+        assert userinfo["sub"] == user_id
 
 
 class TestAuthRefreshToken:
@@ -212,6 +188,7 @@ class TestAuthRefreshToken:
         mock_api_requests: respx.MockRouter,
         access_token: str,
         signed_id_token: str,
+        user_id: str,
     ):
         mock_api_requests.post("/auth/token").return_value = Response(
             200,
@@ -229,7 +206,7 @@ class TestAuthRefreshToken:
         assert token_response["id_token"] == signed_id_token
 
         assert isinstance(userinfo, dict)
-        assert userinfo["sub"] == "USER_ID"
+        assert userinfo["sub"] == user_id
 
     @pytest.mark.asyncio
     async def test_valid_response_async(
@@ -238,6 +215,7 @@ class TestAuthRefreshToken:
         mock_api_requests: respx.MockRouter,
         access_token: str,
         signed_id_token: str,
+        user_id: str,
     ):
         mock_api_requests.post("/auth/token").return_value = Response(
             200,
@@ -255,7 +233,7 @@ class TestAuthRefreshToken:
         assert token_response["id_token"] == signed_id_token
 
         assert isinstance(userinfo, dict)
-        assert userinfo["sub"] == "USER_ID"
+        assert userinfo["sub"] == user_id
 
 
 class TestValidateAccessToken:
@@ -281,12 +259,12 @@ class TestValidateAccessToken:
         with pytest.raises(FiefAccessTokenMissingScope):
             fief_client.validate_access_token(access_token, required_scope=["REQUIRED"])
 
-    def test_valid(self, fief_client: Fief, generate_token):
+    def test_valid(self, fief_client: Fief, generate_token, user_id: str):
         access_token = generate_token(encrypt=False, scope="openid offline_access")
-        user_id = fief_client.validate_access_token(
+        validated_user_id = fief_client.validate_access_token(
             access_token, required_scope=["openid"]
         )
-        assert user_id == "USER_ID"
+        assert validated_user_id == user_id
 
     @pytest.mark.asyncio
     async def test_async_invalid_signature(self, fief_async_client: FiefAsync):
@@ -319,20 +297,26 @@ class TestValidateAccessToken:
             )
 
     @pytest.mark.asyncio
-    async def test_async_valid(self, fief_async_client: FiefAsync, generate_token):
+    async def test_async_valid(
+        self, fief_async_client: FiefAsync, generate_token, user_id: str
+    ):
         access_token = generate_token(encrypt=False, scope="openid offline_access")
-        user_id = await fief_async_client.validate_access_token(
+        validated_user_id = await fief_async_client.validate_access_token(
             access_token, required_scope=["openid"]
         )
-        assert user_id == "USER_ID"
+        assert validated_user_id == user_id
 
 
 class TestDecodeIdToken:
     def test_signed_valid(
-        self, fief_client: Fief, signed_id_token: str, signature_key: jwk.JWK
+        self,
+        fief_client: Fief,
+        signed_id_token: str,
+        signature_key: jwk.JWK,
+        user_id: str,
     ):
         claims = fief_client._decode_id_token(signed_id_token, signature_key)
-        assert claims["sub"] == "USER_ID"
+        assert claims["sub"] == user_id
 
     def test_signed_invalid(self, fief_client: Fief, signature_key: jwk.JWK):
         with pytest.raises(FiefIdTokenInvalid):
@@ -346,11 +330,12 @@ class TestDecodeIdToken:
         fief_client_encryption_key: Fief,
         encrypted_id_token: str,
         signature_key: jwk.JWK,
+        user_id: str,
     ):
         claims = fief_client_encryption_key._decode_id_token(
             encrypted_id_token, signature_key
         )
-        assert claims["sub"] == "USER_ID"
+        assert claims["sub"] == user_id
 
     def test_encrypted_without_key(
         self, fief_client: Fief, encrypted_id_token: str, signature_key: jwk.JWK
