@@ -1,9 +1,9 @@
 import sys
 
 if sys.version_info < (3, 8):
-    from typing_extensions import TypedDict
+    from typing_extensions import TypedDict  # pragma: no cover
 else:
-    from typing import TypedDict
+    from typing import TypedDict  # pragma: no cover
 
 import contextlib
 import json
@@ -12,7 +12,6 @@ from urllib.parse import urlencode
 
 import httpx
 from jwcrypto import jwk, jwt
-from jwcrypto.common import JWException
 
 HTTPXClient = Union[httpx.Client, httpx.AsyncClient]
 
@@ -29,7 +28,19 @@ class FiefError(Exception):
     pass
 
 
-class FiefIdTokenInvalidError(FiefError):
+class FiefAccessTokenInvalid(FiefError):
+    pass
+
+
+class FiefAccessTokenExpired(FiefError):
+    pass
+
+
+class FiefAccessTokenMissingScope(FiefError):
+    pass
+
+
+class FiefIdTokenInvalid(FiefError):
     pass
 
 
@@ -83,6 +94,29 @@ class BaseFief:
         authorization_endpoint = openid_configuration["authorization_endpoint"]
         return f"{authorization_endpoint}?{urlencode(params)}"
 
+    def _validate_access_token(
+        self,
+        access_token: str,
+        jwks: jwk.JWKSet,
+        *,
+        required_scope: Optional[List[str]] = None,
+    ):
+        try:
+            decoded_token = jwt.JWT(jwt=access_token, algs=["RS256"], key=jwks)
+            claims = json.loads(decoded_token.claims)
+            if required_scope is not None:
+                access_token_scope = claims["scope"].split()
+                for scope in required_scope:
+                    if scope not in access_token_scope:
+                        raise FiefAccessTokenMissingScope()
+            return claims["sub"]
+        except jwt.JWTExpired as e:
+            raise FiefAccessTokenExpired() from e
+        except jwt.JWException as e:
+            raise FiefAccessTokenInvalid() from e
+        except KeyError as e:
+            raise FiefAccessTokenInvalid() from e
+
     def _decode_id_token(self, id_token: str, jwks: jwk.JWKSet) -> Dict[str, Any]:
         try:
             if self.encryption_key is not None:
@@ -93,8 +127,8 @@ class BaseFief:
 
             signed_id_token = jwt.JWT(jwt=id_token_claims, algs=["RS256"], key=jwks)
             return json.loads(signed_id_token.claims)
-        except JWException as e:
-            raise FiefIdTokenInvalidError() from e
+        except jwt.JWException as e:
+            raise FiefIdTokenInvalid() from e
 
     def _get_openid_configuration_request(self, client: HTTPXClient) -> httpx.Request:
         return client.build_request("GET", "/.well-known/openid-configuration")
@@ -177,6 +211,14 @@ class Fief(BaseFief):
         jwks = self._get_jwks()
         userinfo = self._decode_id_token(token_response["id_token"], jwks)
         return token_response, userinfo
+
+    def validate_access_token(
+        self, access_token, *, required_scope: Optional[List[str]] = None
+    ):
+        jwks = self._get_jwks()
+        return self._validate_access_token(
+            access_token, jwks, required_scope=required_scope
+        )
 
     @contextlib.contextmanager
     def _get_httpx_client(self):
@@ -266,6 +308,14 @@ class FiefAsync(BaseFief):
         jwks = await self._get_jwks()
         userinfo = self._decode_id_token(token_response["id_token"], jwks)
         return token_response, userinfo
+
+    async def validate_access_token(
+        self, access_token, *, required_scope: Optional[List[str]] = None
+    ):
+        jwks = await self._get_jwks()
+        return self._validate_access_token(
+            access_token, jwks, required_scope=required_scope
+        )
 
     @contextlib.asynccontextmanager
     async def _get_httpx_client(self):

@@ -3,7 +3,7 @@ from fief_client.client import (
     Fief,
     FiefAsync,
     FiefError,
-    FiefIdTokenInvalidError,
+    FiefIdTokenInvalid,
     FiefTokenResponse,
 )
 
@@ -14,5 +14,5 @@ __all__ = [
     "FiefAsync",
     "FiefTokenResponse",
     "FiefError",
-    "FiefIdTokenInvalidError",
+    "FiefIdTokenInvalid",
 ]

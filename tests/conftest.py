@@ -24,7 +24,7 @@ def encryption_key(keys: jwk.JWKSet) -> jwk.JWK:
 
 @pytest.fixture(scope="session")
 def generate_token(signature_key: jwk.JWK, encryption_key: jwk.JWK):
-    def _generate_token(encrypt: bool) -> str:
+    def _generate_token(encrypt: bool, **kwargs) -> str:
         iat = int(datetime.now(timezone.utc).timestamp())
         exp = iat + 3600
 
@@ -36,6 +36,7 @@ def generate_token(signature_key: jwk.JWK, encryption_key: jwk.JWK):
             "exp": exp,
             "iat": iat,
             "azp": "CLIENT_ID",
+            **kwargs,
         }
 
         signed_token = jwt.JWT(header={"alg": "RS256"}, claims=claims)

@@ -9,8 +9,11 @@ from jwcrypto import jwk
 
 from fief_client.client import (
     Fief,
+    FiefAccessTokenExpired,
+    FiefAccessTokenInvalid,
+    FiefAccessTokenMissingScope,
     FiefAsync,
-    FiefIdTokenInvalidError,
+    FiefIdTokenInvalid,
     FiefTokenResponse,
 )
 
@@ -62,11 +65,15 @@ def fief_async_client() -> FiefAsync:
 
 def test_serializable_fief_token_response():
     token_response = FiefTokenResponse(
-        access_token="ACCESS_TOKEN", id_token="ID_TOKEN", token_type="bearer"
+        access_token="ACCESS_TOKEN",
+        id_token="ID_TOKEN",
+        token_type="bearer",
+        expires_in=3600,
+        refresh_token=None,
     )
     assert (
         json.dumps(token_response)
-        == '{"access_token": "ACCESS_TOKEN", "id_token": "ID_TOKEN", "token_type": "bearer"}'
+        == '{"access_token": "ACCESS_TOKEN", "id_token": "ID_TOKEN", "token_type": "bearer", "expires_in": 3600, "refresh_token": null}'
     )
 
 
@@ -215,7 +222,9 @@ class TestAuthRefreshToken:
             },
         )
 
-        token_response, userinfo = fief_client.auth_refresh_token("REFRESH_TOKEN")
+        token_response, userinfo = fief_client.auth_refresh_token(
+            "REFRESH_TOKEN", scope=["openid", "offline_access"]
+        )
         assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token
 
@@ -240,13 +249,82 @@ class TestAuthRefreshToken:
         )
 
         token_response, userinfo = await fief_async_client.auth_refresh_token(
-            "REFRESH_TOKEN"
+            "REFRESH_TOKEN", scope=["openid", "offline_access"]
         )
         assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token
 
         assert isinstance(userinfo, dict)
         assert userinfo["sub"] == "USER_ID"
+
+
+class TestValidateAccessToken:
+    def test_invalid_signature(self, fief_client: Fief):
+        with pytest.raises(FiefAccessTokenInvalid):
+            fief_client.validate_access_token(
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+            )
+
+    def test_invalid_claims(self, fief_client: Fief):
+        with pytest.raises(FiefAccessTokenInvalid):
+            fief_client.validate_access_token(
+                "eyJhbGciOiJSUzI1NiJ9.e30.RmKxjgPljzJL_-Yp9oBJIvNejvES_pnTeZBDvptYcdWm4Ze9D6FlM8RFJ5-ZJ3O-HXlWylVXiGAE_wdSGXehSaENUN3Mj91j5OfiXGrtBGSiEiCtC9HYKCi6xf6xmcEPoTbtBVi38a9OARoJlpTJ5T4BbmqIUR8R06sqo3zTkwk48wPmYtk_OPgMv4c8tNyHF17dRe1JM_ix-m7V1Nv_2DHLMRgMXdsWkl0RCcAFQwqCTXU4UxWSoXp6CB0-Ybkq-P5KyXIXy0b15qG8jfgCrFHqFhN3hpyvL4Zza_EkXJaCkB5v-oztlHS6gTGb3QgFqppW3JM6TJnDKslGRPDsjg"
+            )
+
+    def test_expired(self, fief_client: Fief, generate_token):
+        access_token = generate_token(encrypt=False, exp=0)
+        with pytest.raises(FiefAccessTokenExpired):
+            fief_client.validate_access_token(access_token)
+
+    def test_missing_scope(self, fief_client: Fief, generate_token):
+        access_token = generate_token(encrypt=False, scope="openid offline_access")
+        with pytest.raises(FiefAccessTokenMissingScope):
+            fief_client.validate_access_token(access_token, required_scope=["REQUIRED"])
+
+    def test_valid(self, fief_client: Fief, generate_token):
+        access_token = generate_token(encrypt=False, scope="openid offline_access")
+        user_id = fief_client.validate_access_token(
+            access_token, required_scope=["openid"]
+        )
+        assert user_id == "USER_ID"
+
+    @pytest.mark.asyncio
+    async def test_async_invalid_signature(self, fief_async_client: FiefAsync):
+        with pytest.raises(FiefAccessTokenInvalid):
+            await fief_async_client.validate_access_token(
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+            )
+
+    @pytest.mark.asyncio
+    async def test_async_invalid_claims(self, fief_async_client: FiefAsync):
+        with pytest.raises(FiefAccessTokenInvalid):
+            await fief_async_client.validate_access_token(
+                "eyJhbGciOiJSUzI1NiJ9.e30.RmKxjgPljzJL_-Yp9oBJIvNejvES_pnTeZBDvptYcdWm4Ze9D6FlM8RFJ5-ZJ3O-HXlWylVXiGAE_wdSGXehSaENUN3Mj91j5OfiXGrtBGSiEiCtC9HYKCi6xf6xmcEPoTbtBVi38a9OARoJlpTJ5T4BbmqIUR8R06sqo3zTkwk48wPmYtk_OPgMv4c8tNyHF17dRe1JM_ix-m7V1Nv_2DHLMRgMXdsWkl0RCcAFQwqCTXU4UxWSoXp6CB0-Ybkq-P5KyXIXy0b15qG8jfgCrFHqFhN3hpyvL4Zza_EkXJaCkB5v-oztlHS6gTGb3QgFqppW3JM6TJnDKslGRPDsjg"
+            )
+
+    @pytest.mark.asyncio
+    async def test_async_expired(self, fief_async_client: FiefAsync, generate_token):
+        access_token = generate_token(encrypt=False, exp=0)
+        with pytest.raises(FiefAccessTokenExpired):
+            await fief_async_client.validate_access_token(access_token)
+
+    @pytest.mark.asyncio
+    async def test_async_missing_scope(
+        self, fief_async_client: FiefAsync, generate_token
+    ):
+        access_token = generate_token(encrypt=False, scope="openid offline_access")
+        with pytest.raises(FiefAccessTokenMissingScope):
+            await fief_async_client.validate_access_token(
+                access_token, required_scope=["REQUIRED"]
+            )
+
+    @pytest.mark.asyncio
+    async def test_async_valid(self, fief_async_client: FiefAsync, generate_token):
+        access_token = generate_token(encrypt=False, scope="openid offline_access")
+        user_id = await fief_async_client.validate_access_token(
+            access_token, required_scope=["openid"]
+        )
+        assert user_id == "USER_ID"
 
 
 class TestDecodeIdToken:
@@ -257,7 +335,7 @@ class TestDecodeIdToken:
         assert claims["sub"] == "USER_ID"
 
     def test_signed_invalid(self, fief_client: Fief, signature_key: jwk.JWK):
-        with pytest.raises(FiefIdTokenInvalidError):
+        with pytest.raises(FiefIdTokenInvalid):
             fief_client._decode_id_token(
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
                 signature_key,
@@ -277,13 +355,13 @@ class TestDecodeIdToken:
     def test_encrypted_without_key(
         self, fief_client: Fief, encrypted_id_token: str, signature_key: jwk.JWK
     ):
-        with pytest.raises(FiefIdTokenInvalidError):
+        with pytest.raises(FiefIdTokenInvalid):
             fief_client._decode_id_token(encrypted_id_token, signature_key)
 
     def test_encrypted_invalid(
         self, fief_client_encryption_key: Fief, signature_key: jwk.JWK
     ):
-        with pytest.raises(FiefIdTokenInvalidError):
+        with pytest.raises(FiefIdTokenInvalid):
             fief_client_encryption_key._decode_id_token(
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
                 signature_key,
