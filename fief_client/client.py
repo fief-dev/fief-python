@@ -1,4 +1,5 @@
 import sys
+import uuid
 
 if sys.version_info < (3, 8):
     from typing_extensions import TypedDict  # pragma: no cover
@@ -22,6 +23,12 @@ class FiefTokenResponse(TypedDict):
     token_type: str
     expires_in: int
     refresh_token: Optional[str]
+
+
+class FiefAccessTokenInfo(TypedDict):
+    id: uuid.UUID
+    scope: List[str]
+    access_token: str
 
 
 class FiefError(Exception):
@@ -100,16 +107,22 @@ class BaseFief:
         jwks: jwk.JWKSet,
         *,
         required_scope: Optional[List[str]] = None,
-    ):
+    ) -> FiefAccessTokenInfo:
         try:
             decoded_token = jwt.JWT(jwt=access_token, algs=["RS256"], key=jwks)
             claims = json.loads(decoded_token.claims)
+            access_token_scope = claims["scope"].split()
             if required_scope is not None:
-                access_token_scope = claims["scope"].split()
                 for scope in required_scope:
                     if scope not in access_token_scope:
                         raise FiefAccessTokenMissingScope()
-            return claims["sub"]
+
+            return {
+                "id": uuid.UUID(claims["sub"]),
+                "scope": access_token_scope,
+                "access_token": access_token,
+            }
+
         except jwt.JWTExpired as e:
             raise FiefAccessTokenExpired() from e
         except jwt.JWException as e:
@@ -221,7 +234,7 @@ class Fief(BaseFief):
 
     def validate_access_token(
         self, access_token: str, *, required_scope: Optional[List[str]] = None
-    ):
+    ) -> FiefAccessTokenInfo:
         jwks = self._get_jwks()
         return self._validate_access_token(
             access_token, jwks, required_scope=required_scope
@@ -330,7 +343,7 @@ class FiefAsync(BaseFief):
 
     async def validate_access_token(
         self, access_token: str, *, required_scope: Optional[List[str]] = None
-    ):
+    ) -> FiefAccessTokenInfo:
         jwks = await self._get_jwks()
         return self._validate_access_token(
             access_token, jwks, required_scope=required_scope

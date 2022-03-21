@@ -9,7 +9,7 @@ from fastapi.security.base import SecurityBase
 from fastapi.security.http import HTTPBearer
 from fastapi.security.oauth2 import OAuth2PasswordBearer
 
-from fief_client.client import Fief, FiefAsync
+from fief_client.client import Fief, FiefAccessTokenInfo, FiefAsync
 from fief_client.integrations.fastapi import FiefAuth, FiefClientClass
 
 
@@ -36,14 +36,18 @@ def fastapi_app(fief_client: FiefClientClass, scheme: SecurityBase) -> FastAPI:
     app = FastAPI()
 
     @app.get("/current-user")
-    async def get_current_user(user_id: uuid.UUID = Depends(auth.current_user())):
-        return {"user_id": str(user_id)}
+    async def get_current_user(
+        current_user: FiefAccessTokenInfo = Depends(auth.current_user()),
+    ):
+        return current_user
 
     @app.get("/current-user-scope")
     async def get_current_user_scope(
-        user_id: uuid.UUID = Depends(auth.current_user(scope=["required_scope"])),
+        current_user: FiefAccessTokenInfo = Depends(
+            auth.current_user(scope=["required_scope"])
+        ),
     ):
-        return {"user_id": str(user_id)}
+        return current_user
 
     return app
 
@@ -88,7 +92,7 @@ async def test_expired_token(test_client: httpx.AsyncClient, generate_token):
 async def test_valid_token(
     test_client: httpx.AsyncClient, generate_token, user_id: str
 ):
-    access_token = generate_token(encrypt=False)
+    access_token = generate_token(encrypt=False, scope="openid")
 
     response = await test_client.get(
         "/current-user", headers={"Authorization": f"Bearer {access_token}"}
@@ -97,7 +101,7 @@ async def test_valid_token(
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
-    assert json == {"user_id": user_id}
+    assert json == {"id": user_id, "scope": ["openid"], "access_token": access_token}
 
 
 @pytest.mark.asyncio
@@ -124,4 +128,8 @@ async def test_valid_scope(
     assert response.status_code == status.HTTP_200_OK
 
     json = response.json()
-    assert json == {"user_id": user_id}
+    assert json == {
+        "id": user_id,
+        "scope": ["openid", "required_scope"],
+        "access_token": access_token,
+    }

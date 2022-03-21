@@ -1,4 +1,5 @@
 import json
+import uuid
 from typing import List, Mapping, Optional
 
 import pytest
@@ -261,10 +262,14 @@ class TestValidateAccessToken:
 
     def test_valid(self, fief_client: Fief, generate_token, user_id: str):
         access_token = generate_token(encrypt=False, scope="openid offline_access")
-        validated_user_id = fief_client.validate_access_token(
+        info = fief_client.validate_access_token(
             access_token, required_scope=["openid"]
         )
-        assert validated_user_id == user_id
+        assert info == {
+            "id": uuid.UUID(user_id),
+            "scope": ["openid", "offline_access"],
+            "access_token": access_token,
+        }
 
     @pytest.mark.asyncio
     async def test_async_invalid_signature(self, fief_async_client: FiefAsync):
@@ -301,10 +306,14 @@ class TestValidateAccessToken:
         self, fief_async_client: FiefAsync, generate_token, user_id: str
     ):
         access_token = generate_token(encrypt=False, scope="openid offline_access")
-        validated_user_id = await fief_async_client.validate_access_token(
+        info = await fief_async_client.validate_access_token(
             access_token, required_scope=["openid"]
         )
-        assert validated_user_id == user_id
+        assert info == {
+            "id": uuid.UUID(user_id),
+            "scope": ["openid", "offline_access"],
+            "access_token": access_token,
+        }
 
 
 class TestUserinfo:

@@ -1,4 +1,3 @@
-import uuid
 from inspect import Parameter, Signature, isawaitable
 from typing import Callable, List, Optional, Union, cast
 
@@ -10,6 +9,7 @@ from makefun import with_signature
 from fief_client import (
     Fief,
     FiefAccessTokenExpired,
+    FiefAccessTokenInfo,
     FiefAccessTokenInvalid,
     FiefAccessTokenMissingScope,
     FiefAsync,
@@ -31,7 +31,7 @@ class FiefAuth:
         @with_signature(signature)
         async def _current_user(
             request: Request, response: Response, token: Optional[TokenType]
-        ) -> uuid.UUID:
+        ) -> FiefAccessTokenInfo:
             if token is None:
                 return await self.get_unauthorized_response(request, response)
 
@@ -41,15 +41,15 @@ class FiefAuth:
             try:
                 result = self.client.validate_access_token(token, required_scope=scope)
                 if isawaitable(result):
-                    user_id = await result
+                    info = await result
                 else:
-                    user_id = result
+                    info = result
             except (FiefAccessTokenInvalid, FiefAccessTokenExpired):
                 return await self.get_unauthorized_response(request, response)
             except FiefAccessTokenMissingScope:
                 return await self.get_forbidden_response(request, response)
 
-            return uuid.UUID(user_id)
+            return info
 
         return _current_user
 
