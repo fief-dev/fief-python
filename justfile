@@ -6,7 +6,7 @@ default:
 install:
   python -m pip install --upgrade pip
   pip install flit
-  flit install --deps develop --extras fastapi
+  flit install --deps all
 
 lint:
 	isort . && black . && mypy fief_client/
