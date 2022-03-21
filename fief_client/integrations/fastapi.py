@@ -2,7 +2,7 @@ import uuid
 from inspect import Parameter, Signature, isawaitable
 from typing import Callable, List, Optional, Union, cast
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security.base import SecurityBase
 from fastapi.security.http import HTTPAuthorizationCredentials
 from makefun import with_signature
@@ -29,9 +29,11 @@ class FiefAuth:
         signature = self._get_call_signature(self.scheme)
 
         @with_signature(signature)
-        async def _current_user(token: Optional[TokenType]) -> uuid.UUID:
+        async def _current_user(
+            request: Request, response: Response, token: Optional[TokenType]
+        ) -> uuid.UUID:
             if token is None:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+                return await self.get_unauthorized_response(request, response)
 
             if isinstance(token, HTTPAuthorizationCredentials):
                 token = token.credentials
@@ -42,14 +44,20 @@ class FiefAuth:
                     user_id = await result
                 else:
                     user_id = result
-            except (FiefAccessTokenInvalid, FiefAccessTokenExpired) as e:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED) from e
-            except FiefAccessTokenMissingScope as e:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN) from e
+            except (FiefAccessTokenInvalid, FiefAccessTokenExpired):
+                return await self.get_unauthorized_response(request, response)
+            except FiefAccessTokenMissingScope:
+                return await self.get_forbidden_response(request, response)
 
             return uuid.UUID(user_id)
 
         return _current_user
+
+    async def get_unauthorized_response(self, request: Request, response: Response):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+    async def get_forbidden_response(self, request: Request, response: Response):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
     def _get_call_signature(self, scheme: SecurityBase) -> Signature:
         """
@@ -61,10 +69,20 @@ class FiefAuth:
         """
         parameters: List[Parameter] = [
             Parameter(
+                name="request",
+                kind=Parameter.POSITIONAL_OR_KEYWORD,
+                annotation=Request,
+            ),
+            Parameter(
+                name="response",
+                kind=Parameter.POSITIONAL_OR_KEYWORD,
+                annotation=Response,
+            ),
+            Parameter(
                 name="token",
                 kind=Parameter.POSITIONAL_OR_KEYWORD,
                 default=Depends(cast(Callable, scheme)),
-            )
+            ),
         ]
 
         return Signature(parameters)
