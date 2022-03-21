@@ -92,6 +92,7 @@ def mock_api_requests(
             json={
                 "authorization_endpoint": f"{HOSTNAME}/auth/authorize",
                 "token_endpoint": f"{HOSTNAME}/auth/token",
+                "userinfo_endpoint": f"{HOSTNAME}/userinfo",
                 "jwks_uri": f"{HOSTNAME}/.well-known/jwks.json",
             },
         )

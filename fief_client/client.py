@@ -165,6 +165,13 @@ class BaseFief:
 
         return client.build_request("POST", endpoint, data=data)
 
+    def _get_userinfo_request(
+        self, client: HTTPXClient, *, endpoint: str, access_token: str
+    ) -> httpx.Request:
+        return client.build_request(
+            "GET", endpoint, headers={"Authorization": f"Bearer {access_token}"}
+        )
+
 
 class Fief(BaseFief):
     def auth_url(
@@ -213,12 +220,24 @@ class Fief(BaseFief):
         return token_response, userinfo
 
     def validate_access_token(
-        self, access_token, *, required_scope: Optional[List[str]] = None
+        self, access_token: str, *, required_scope: Optional[List[str]] = None
     ):
         jwks = self._get_jwks()
         return self._validate_access_token(
             access_token, jwks, required_scope=required_scope
         )
+
+    def userinfo(self, access_token: str) -> Dict[str, Any]:
+        userinfo_endpoint = self._get_openid_configuration()["userinfo_endpoint"]
+        with self._get_httpx_client() as client:
+            request = self._get_userinfo_request(
+                client, endpoint=userinfo_endpoint, access_token=access_token
+            )
+            response = client.send(request)
+
+            response.raise_for_status()
+
+            return response.json()
 
     @contextlib.contextmanager
     def _get_httpx_client(self):
@@ -310,12 +329,26 @@ class FiefAsync(BaseFief):
         return token_response, userinfo
 
     async def validate_access_token(
-        self, access_token, *, required_scope: Optional[List[str]] = None
+        self, access_token: str, *, required_scope: Optional[List[str]] = None
     ):
         jwks = await self._get_jwks()
         return self._validate_access_token(
             access_token, jwks, required_scope=required_scope
         )
+
+    async def userinfo(self, access_token: str) -> Dict[str, Any]:
+        userinfo_endpoint = (await self._get_openid_configuration())[
+            "userinfo_endpoint"
+        ]
+        async with self._get_httpx_client() as client:
+            request = self._get_userinfo_request(
+                client, endpoint=userinfo_endpoint, access_token=access_token
+            )
+            response = await client.send(request)
+
+            response.raise_for_status()
+
+            return response.json()
 
     @contextlib.asynccontextmanager
     async def _get_httpx_client(self):

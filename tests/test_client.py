@@ -307,6 +307,32 @@ class TestValidateAccessToken:
         assert validated_user_id == user_id
 
 
+class TestUserinfo:
+    def test_valid_response(
+        self, fief_client: Fief, mock_api_requests: respx.MockRouter, user_id: str
+    ):
+        mock_api_requests.get("/userinfo").return_value = Response(
+            200, json={"sub": user_id}
+        )
+
+        userinfo = fief_client.userinfo("ACCESS_TOKEN")
+        assert userinfo == {"sub": user_id}
+
+    @pytest.mark.asyncio
+    async def test_valid_response_async(
+        self,
+        fief_async_client: FiefAsync,
+        mock_api_requests: respx.MockRouter,
+        user_id: str,
+    ):
+        mock_api_requests.get("/userinfo").return_value = Response(
+            200, json={"sub": user_id}
+        )
+
+        userinfo = await fief_async_client.userinfo("ACCESS_TOKEN")
+        assert userinfo == {"sub": user_id}
+
+
 class TestDecodeIdToken:
     def test_signed_valid(
         self,
