@@ -57,6 +57,7 @@ dev = [
   "pytest-mock",
   "respx",
   "tryceratops",
+  "uvicorn[standard]",
 ]
 
 fastapi = [

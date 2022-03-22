@@ -8,8 +8,11 @@ install:
   pip install flit
   flit install --deps all
 
-lint:
-	isort . && black . && mypy fief_client/
+isort-examples:
+  isort ./examples -o fief_client
+
+lint: isort-examples
+	isort ./fief_client && isort ./tests && black . && mypy fief_client/
 
 test:
   pytest --cov fief_client/ --cov-report=term-missing
