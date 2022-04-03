@@ -65,6 +65,10 @@ fastapi = [
   "makefun ==1.13.1",
 ]
 
+flask = [
+  "flask",
+]
+
 [project.urls]
 Documentation = "https://github.com/fief-dev/fief-python"
 
