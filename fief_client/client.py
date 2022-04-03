@@ -149,15 +149,17 @@ class BaseFief:
     def _get_auth_exchange_token_request(
         self, client: HTTPXClient, *, endpoint: str, code: str, redirect_uri: str
     ) -> httpx.Request:
+        basic_auth = httpx.BasicAuth(self.client_id, self.client_secret)
         return client.build_request(
             "POST",
             endpoint,
+            headers={
+                "Authorization": basic_auth._auth_header,
+            },
             data={
                 "grant_type": "authorization_code",
                 "code": code,
                 "redirect_uri": redirect_uri,
-                "client_id": self.client_id,
-                "client_secret": self.client_secret,
             },
         )
 
@@ -176,7 +178,15 @@ class BaseFief:
         if scope is not None:
             data["scope"] = " ".join(scope)
 
-        return client.build_request("POST", endpoint, data=data)
+        basic_auth = httpx.BasicAuth(self.client_id, self.client_secret)
+        return client.build_request(
+            "POST",
+            endpoint,
+            headers={
+                "Authorization": basic_auth._auth_header,
+            },
+            data=data,
+        )
 
     def _get_userinfo_request(
         self, client: HTTPXClient, *, endpoint: str, access_token: str

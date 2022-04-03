@@ -136,7 +136,8 @@ class TestAuthCallback:
         signed_id_token: str,
         user_id: str,
     ):
-        mock_api_requests.post("/auth/token").return_value = Response(
+        token_route = mock_api_requests.post("/auth/token")
+        token_route.return_value = Response(
             200,
             json={
                 "access_token": access_token,
@@ -148,6 +149,11 @@ class TestAuthCallback:
         token_response, userinfo = fief_client.auth_callback(
             "CODE", "https://www.bretagne.duchy/callback"
         )
+
+        token_route_call = token_route.calls.last
+        assert token_route_call is not None
+        assert "Authorization" in token_route_call.request.headers
+
         assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token
 
@@ -163,7 +169,8 @@ class TestAuthCallback:
         signed_id_token: str,
         user_id: str,
     ):
-        mock_api_requests.post("/auth/token").return_value = Response(
+        token_route = mock_api_requests.post("/auth/token")
+        token_route.return_value = Response(
             200,
             json={
                 "access_token": access_token,
@@ -175,6 +182,11 @@ class TestAuthCallback:
         token_response, userinfo = await fief_async_client.auth_callback(
             "CODE", "https://www.bretagne.duchy/callback"
         )
+
+        token_route_call = token_route.calls.last
+        assert token_route_call is not None
+        assert "Authorization" in token_route_call.request.headers
+
         assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token
 
@@ -191,7 +203,8 @@ class TestAuthRefreshToken:
         signed_id_token: str,
         user_id: str,
     ):
-        mock_api_requests.post("/auth/token").return_value = Response(
+        token_route = mock_api_requests.post("/auth/token")
+        token_route.return_value = Response(
             200,
             json={
                 "access_token": access_token,
@@ -203,6 +216,11 @@ class TestAuthRefreshToken:
         token_response, userinfo = fief_client.auth_refresh_token(
             "REFRESH_TOKEN", scope=["openid", "offline_access"]
         )
+
+        token_route_call = token_route.calls.last
+        assert token_route_call is not None
+        assert "Authorization" in token_route_call.request.headers
+
         assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token
 
@@ -218,7 +236,8 @@ class TestAuthRefreshToken:
         signed_id_token: str,
         user_id: str,
     ):
-        mock_api_requests.post("/auth/token").return_value = Response(
+        token_route = mock_api_requests.post("/auth/token")
+        token_route.return_value = Response(
             200,
             json={
                 "access_token": access_token,
@@ -230,6 +249,11 @@ class TestAuthRefreshToken:
         token_response, userinfo = await fief_async_client.auth_refresh_token(
             "REFRESH_TOKEN", scope=["openid", "offline_access"]
         )
+
+        token_route_call = token_route.calls.last
+        assert token_route_call is not None
+        assert "Authorization" in token_route_call.request.headers
+
         assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token
 
