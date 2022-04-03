@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import List, Mapping, Optional
+from typing import Dict, List, Mapping, Optional
 
 import pytest
 import respx
@@ -16,6 +16,7 @@ from fief_client.client import (
     FiefIdTokenInvalid,
     FiefTokenResponse,
 )
+from fief_client.crypto import get_validation_hash
 
 
 @pytest.fixture(scope="module")
@@ -409,4 +410,45 @@ class TestDecodeIdToken:
             fief_client_encryption_key._decode_id_token(
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
                 signature_key,
+            )
+
+    def test_signed_at_hash_c_hash_valid(
+        self,
+        fief_client: Fief,
+        signature_key: jwk.JWK,
+        user_id: str,
+        generate_token,
+    ):
+        id_token = generate_token(
+            encrypt=False,
+            c_hash=get_validation_hash("CODE"),
+            at_hash=get_validation_hash("ACCESS_TOKEN"),
+        )
+        claims = fief_client._decode_id_token(
+            id_token, signature_key, code="CODE", access_token="ACCESS_TOKEN"
+        )
+        assert claims["sub"] == user_id
+
+    @pytest.mark.parametrize(
+        "claims",
+        [
+            {"c_hash": get_validation_hash("INVALID_CODE")},
+            {"at_hash": get_validation_hash("INVALID_ACCESS_TOKEN")},
+            {
+                "c_hash": get_validation_hash("INVALID_CODE"),
+                "at_hash": get_validation_hash("INVALID_ACCESS_TOKEN"),
+            },
+        ],
+    )
+    def test_signed_at_hash_c_hash_invalid(
+        self,
+        claims: Dict[str, str],
+        fief_client: Fief,
+        signature_key: jwk.JWK,
+        generate_token,
+    ):
+        id_token = generate_token(encrypt=False, **claims)
+        with pytest.raises(FiefIdTokenInvalid):
+            fief_client._decode_id_token(
+                id_token, signature_key, code="CODE", access_token="ACCESS_TOKEN"
             )

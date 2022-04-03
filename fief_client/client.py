@@ -14,6 +14,8 @@ from urllib.parse import urlencode
 import httpx
 from jwcrypto import jwk, jwt
 
+from fief_client.crypto import is_valid_hash
+
 HTTPXClient = Union[httpx.Client, httpx.AsyncClient]
 
 
@@ -130,7 +132,14 @@ class BaseFief:
         except KeyError as e:
             raise FiefAccessTokenInvalid() from e
 
-    def _decode_id_token(self, id_token: str, jwks: jwk.JWKSet) -> Dict[str, Any]:
+    def _decode_id_token(
+        self,
+        id_token: str,
+        jwks: jwk.JWKSet,
+        *,
+        code: Optional[str] = None,
+        access_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
         try:
             if self.encryption_key is not None:
                 decrypted_id_token = jwt.JWT(jwt=id_token, key=self.encryption_key)
@@ -139,7 +148,19 @@ class BaseFief:
                 id_token_claims = id_token
 
             signed_id_token = jwt.JWT(jwt=id_token_claims, algs=["RS256"], key=jwks)
-            return json.loads(signed_id_token.claims)
+            claims = json.loads(signed_id_token.claims)
+
+            if "c_hash" in claims:
+                if code is None or not is_valid_hash(code, claims["c_hash"]):
+                    raise FiefIdTokenInvalid()
+
+            if "at_hash" in claims:
+                if access_token is None or not is_valid_hash(
+                    access_token, claims["at_hash"]
+                ):
+                    raise FiefIdTokenInvalid()
+
+            return claims
         except jwt.JWException as e:
             raise FiefIdTokenInvalid() from e
 
@@ -219,7 +240,12 @@ class Fief(BaseFief):
     ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
         token_response = self._auth_exchange_token(code, redirect_uri)
         jwks = self._get_jwks()
-        userinfo = self._decode_id_token(token_response["id_token"], jwks)
+        userinfo = self._decode_id_token(
+            token_response["id_token"],
+            jwks,
+            code=code,
+            access_token=token_response.get("access_token"),
+        )
         return token_response, userinfo
 
     def auth_refresh_token(
@@ -239,7 +265,11 @@ class Fief(BaseFief):
 
             token_response = response.json()
         jwks = self._get_jwks()
-        userinfo = self._decode_id_token(token_response["id_token"], jwks)
+        userinfo = self._decode_id_token(
+            token_response["id_token"],
+            jwks,
+            access_token=token_response.get("access_token"),
+        )
         return token_response, userinfo
 
     def validate_access_token(
@@ -327,7 +357,12 @@ class FiefAsync(BaseFief):
     ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
         token_response = await self._auth_exchange_token(code, redirect_uri)
         jwks = await self._get_jwks()
-        userinfo = self._decode_id_token(token_response["id_token"], jwks)
+        userinfo = self._decode_id_token(
+            token_response["id_token"],
+            jwks,
+            code=code,
+            access_token=token_response.get("access_token"),
+        )
         return token_response, userinfo
 
     async def auth_refresh_token(
@@ -348,7 +383,11 @@ class FiefAsync(BaseFief):
             token_response = response.json()
 
         jwks = await self._get_jwks()
-        userinfo = self._decode_id_token(token_response["id_token"], jwks)
+        userinfo = self._decode_id_token(
+            token_response["id_token"],
+            jwks,
+            access_token=token_response.get("access_token"),
+        )
         return token_response, userinfo
 
     async def validate_access_token(
