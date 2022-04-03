@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from flask import g, request
 
@@ -23,15 +23,39 @@ class FiefAuthForbidden(FiefAuthError):
     pass
 
 
+TokenGetter = Callable[[], Optional[str]]
+
+
+def get_authorization_scheme_token(*, scheme: str = "bearer") -> TokenGetter:
+    def _get_authorization_scheme_token():
+        authorization = request.headers.get("Authorization")
+        if authorization is None:
+            return None
+        parts = authorization.split()
+        if len(parts) != 2 or parts[0].lower() != scheme.lower():
+            return None
+        return parts[1]
+
+    return _get_authorization_scheme_token
+
+
+def get_cookie(cookie_name: str) -> TokenGetter:
+    def _get_cookie():
+        return request.cookies.get(cookie_name)
+
+    return _get_cookie
+
+
 class FiefAuth:
-    def __init__(self, client: Fief) -> None:
+    def __init__(self, client: Fief, token_getter: TokenGetter) -> None:
         self.client = client
+        self.token_getter = token_getter
 
     def current_user(self, *, scope: Optional[List[str]] = None):
         def _current_user(f):
             @wraps(f)
             def decorated_function(*args, **kwargs):
-                token = self.get_token()
+                token = self.token_getter()
                 if token is None:
                     raise FiefAuthUnauthorized()
 
@@ -52,14 +76,13 @@ class FiefAuth:
 
         return _current_user
 
-    def get_token(self) -> Optional[str]:
-        authorization = request.headers.get("Authorization")
-        if authorization is None:
-            return None
-        parts = authorization.split()
-        if len(parts) != 2 or parts[0].lower() != "bearer":
-            return None
-        return parts[1]
 
-
-__all__ = ["FiefAuth", "FiefAuthError", "FiefAuthUnauthorized", "FiefAuthForbidden"]
+__all__ = [
+    "FiefAuth",
+    "FiefAuthError",
+    "FiefAuthUnauthorized",
+    "FiefAuthForbidden",
+    "TokenGetter",
+    "get_authorization_scheme_token",
+    "get_cookie",
+]

@@ -9,6 +9,8 @@ from fief_client.integrations.flask import (
     FiefAuth,
     FiefAuthForbidden,
     FiefAuthUnauthorized,
+    get_authorization_scheme_token,
+    get_cookie,
 )
 
 
@@ -19,7 +21,7 @@ def fief_client() -> Fief:
 
 @pytest.fixture(scope="module")
 def flask_app(fief_client: Fief) -> Generator[Flask, None, None]:
-    auth = FiefAuth(fief_client)
+    auth = FiefAuth(fief_client, get_authorization_scheme_token())
     app = Flask(__name__)
     app.config.update({"TESTING": True})
 
@@ -109,3 +111,15 @@ def test_valid_scope(test_client: FlaskClient, generate_token, user_id: str):
         "scope": ["openid", "required_scope"],
         "access_token": access_token,
     }
+
+
+def test_get_cookie():
+    cookie_getter = get_cookie("COOKIE_NAME")
+    app = Flask(__name__)
+    with app.test_request_context():
+        result = cookie_getter()
+        assert result is None
+
+    with app.test_request_context(headers={"Cookie": "COOKIE_NAME=VALUE"}):
+        result = cookie_getter()
+        assert result == "VALUE"

@@ -8,10 +8,7 @@ install:
   pip install flit
   flit install --deps all
 
-isort-examples:
-  isort ./examples -o fief_client
-
-lint: isort-examples
+lint:
 	isort ./fief_client && isort ./tests && black . && mypy fief_client/
 
 test:
