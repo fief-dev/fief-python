@@ -292,6 +292,10 @@ class Fief(BaseFief):
 
             return response.json()
 
+    def logout_url(self, redirect_uri: str) -> str:
+        params = {"redirect_uri": redirect_uri}
+        return f"{self.base_url}/logout?{urlencode(params)}"
+
     @contextlib.contextmanager
     def _get_httpx_client(self):
         with httpx.Client(base_url=self.base_url) as client:
@@ -411,6 +415,10 @@ class FiefAsync(BaseFief):
             response.raise_for_status()
 
             return response.json()
+
+    async def logout_url(self, redirect_uri: str) -> str:
+        params = {"redirect_uri": redirect_uri}
+        return f"{self.base_url}/logout?{urlencode(params)}"
 
     @contextlib.asynccontextmanager
     async def _get_httpx_client(self):

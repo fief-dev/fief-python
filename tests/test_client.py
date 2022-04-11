@@ -80,7 +80,7 @@ class TestAuthURL:
         )
         assert (
             authorize_url
-            == f"https://bretagne.fief.dev/auth/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=https%3A%2F%2Fwww.bretagne.duchy%2Fcallback{expected_params}"
+            == f"https://bretagne.fief.dev/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=https%3A%2F%2Fwww.bretagne.duchy%2Fcallback{expected_params}"
         )
 
         assert mock_api_requests.calls.last is not None
@@ -117,7 +117,7 @@ class TestAuthURL:
         )
         assert (
             authorize_url
-            == f"https://bretagne.fief.dev/auth/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=https%3A%2F%2Fwww.bretagne.duchy%2Fcallback{expected_params}"
+            == f"https://bretagne.fief.dev/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=https%3A%2F%2Fwww.bretagne.duchy%2Fcallback{expected_params}"
         )
 
         assert mock_api_requests.calls.last is not None
@@ -137,7 +137,7 @@ class TestAuthCallback:
         signed_id_token: str,
         user_id: str,
     ):
-        token_route = mock_api_requests.post("/auth/token")
+        token_route = mock_api_requests.post("/token")
         token_route.return_value = Response(
             200,
             json={
@@ -170,7 +170,7 @@ class TestAuthCallback:
         signed_id_token: str,
         user_id: str,
     ):
-        token_route = mock_api_requests.post("/auth/token")
+        token_route = mock_api_requests.post("/token")
         token_route.return_value = Response(
             200,
             json={
@@ -204,7 +204,7 @@ class TestAuthRefreshToken:
         signed_id_token: str,
         user_id: str,
     ):
-        token_route = mock_api_requests.post("/auth/token")
+        token_route = mock_api_requests.post("/token")
         token_route.return_value = Response(
             200,
             json={
@@ -237,7 +237,7 @@ class TestAuthRefreshToken:
         signed_id_token: str,
         user_id: str,
     ):
-        token_route = mock_api_requests.post("/auth/token")
+        token_route = mock_api_requests.post("/token")
         token_route.return_value = Response(
             200,
             json={
@@ -365,6 +365,23 @@ class TestUserinfo:
 
         userinfo = await fief_async_client.userinfo("ACCESS_TOKEN")
         assert userinfo == {"sub": user_id}
+
+
+class TestLogoutURL:
+    def test_logout_url(self, fief_client: Fief):
+        logout_url = fief_client.logout_url("https://www.bretagne.duchy")
+        assert (
+            logout_url
+            == "https://bretagne.fief.dev/logout?redirect_uri=https%3A%2F%2Fwww.bretagne.duchy"
+        )
+
+    @pytest.mark.asyncio
+    async def test_logout_url_async(self, fief_async_client: FiefAsync):
+        logout_url = await fief_async_client.logout_url("https://www.bretagne.duchy")
+        assert (
+            logout_url
+            == "https://bretagne.fief.dev/logout?redirect_uri=https%3A%2F%2Fwww.bretagne.duchy"
+        )
 
 
 class TestDecodeIdToken:

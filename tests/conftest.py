@@ -90,8 +90,8 @@ def mock_api_requests(
         openid_configuration_route.return_value = Response(
             200,
             json={
-                "authorization_endpoint": f"{HOSTNAME}/auth/authorize",
-                "token_endpoint": f"{HOSTNAME}/auth/token",
+                "authorization_endpoint": f"{HOSTNAME}/authorize",
+                "token_endpoint": f"{HOSTNAME}/token",
                 "userinfo_endpoint": f"{HOSTNAME}/userinfo",
                 "jwks_uri": f"{HOSTNAME}/.well-known/jwks.json",
             },
