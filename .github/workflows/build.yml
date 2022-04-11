@@ -29,7 +29,7 @@ jobs:
         mypy ./fief_client
     - name: Test with pytest
       run: |
-        pytest --cov=fief_client/
+        pytest --cov-report xml --cov=fief_client/
     - uses: codecov/codecov-action@v2
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
