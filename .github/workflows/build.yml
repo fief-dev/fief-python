@@ -28,11 +28,13 @@ jobs:
         black --check .
         mypy ./fief_client
     - name: Test with pytest
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       run: |
         pytest --cov=fief_client/
-        codecov
+    - uses: codecov/codecov-action@v2
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
+        verbose: true
 
   release:
     runs-on: ubuntu-latest

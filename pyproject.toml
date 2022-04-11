@@ -45,7 +45,6 @@ dependencies = [
 dev = [
   "black",
   "bumpversion",
-  "codecov",
   "coverage[toml]",
   "flit",
   "greenlet",
