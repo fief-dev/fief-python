@@ -83,6 +83,8 @@ class BaseFief:
         *,
         state: str = None,
         scope: Optional[List[str]] = None,
+        code_challenge: Optional[str] = None,
+        code_challenge_method: Optional[str] = None,
         extras_params: Optional[Mapping[str, str]] = None,
     ) -> str:
         params = {
@@ -96,6 +98,10 @@ class BaseFief:
 
         if scope is not None:
             params["scope"] = " ".join(scope)
+
+        if code_challenge is not None and code_challenge_method is not None:
+            params["code_challenge"] = code_challenge
+            params["code_challenge_method"] = code_challenge_method
 
         if extras_params is not None:
             params = {**params, **extras_params}
@@ -168,7 +174,13 @@ class BaseFief:
         return client.build_request("GET", "/.well-known/openid-configuration")
 
     def _get_auth_exchange_token_request(
-        self, client: HTTPXClient, *, endpoint: str, code: str, redirect_uri: str
+        self,
+        client: HTTPXClient,
+        *,
+        endpoint: str,
+        code: str,
+        redirect_uri: str,
+        code_verifier: Optional[str] = None,
     ) -> httpx.Request:
         basic_auth = httpx.BasicAuth(self.client_id, self.client_secret)
         return client.build_request(
@@ -181,6 +193,7 @@ class BaseFief:
                 "grant_type": "authorization_code",
                 "code": code,
                 "redirect_uri": redirect_uri,
+                "code_verifier": code_verifier,
             },
         )
 
@@ -224,6 +237,8 @@ class Fief(BaseFief):
         *,
         state: str = None,
         scope: Optional[List[str]] = None,
+        code_challenge: Optional[str] = None,
+        code_challenge_method: Optional[str] = None,
         extras_params: Optional[Mapping[str, str]] = None,
     ) -> str:
         openid_configuration = self._get_openid_configuration()
@@ -232,13 +247,17 @@ class Fief(BaseFief):
             redirect_uri,
             state=state,
             scope=scope,
+            code_challenge=code_challenge,
+            code_challenge_method=code_challenge_method,
             extras_params=extras_params,
         )
 
     def auth_callback(
-        self, code: str, redirect_uri: str
+        self, code: str, redirect_uri: str, *, code_verifier: Optional[str] = None
     ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
-        token_response = self._auth_exchange_token(code, redirect_uri)
+        token_response = self._auth_exchange_token(
+            code, redirect_uri, code_verifier=code_verifier
+        )
         jwks = self._get_jwks()
         userinfo = self._decode_id_token(
             token_response["id_token"],
@@ -322,7 +341,9 @@ class Fief(BaseFief):
             self._jwks = jwk.JWKSet.from_json(response.text)
             return self._jwks
 
-    def _auth_exchange_token(self, code: str, redirect_uri) -> FiefTokenResponse:
+    def _auth_exchange_token(
+        self, code: str, redirect_uri: str, *, code_verifier: Optional[str] = None
+    ) -> FiefTokenResponse:
         token_endpoint = self._get_openid_configuration()["token_endpoint"]
         with self._get_httpx_client() as client:
             request = self._get_auth_exchange_token_request(
@@ -330,6 +351,7 @@ class Fief(BaseFief):
                 endpoint=token_endpoint,
                 code=code,
                 redirect_uri=redirect_uri,
+                code_verifier=code_verifier,
             )
             response = client.send(request)
 
@@ -345,6 +367,8 @@ class FiefAsync(BaseFief):
         *,
         state: str = None,
         scope: Optional[List[str]] = None,
+        code_challenge: Optional[str] = None,
+        code_challenge_method: Optional[str] = None,
         extras_params: Optional[Mapping[str, str]] = None,
     ) -> str:
         openid_configuration = await self._get_openid_configuration()
@@ -353,13 +377,17 @@ class FiefAsync(BaseFief):
             redirect_uri,
             state=state,
             scope=scope,
+            code_challenge=code_challenge,
+            code_challenge_method=code_challenge_method,
             extras_params=extras_params,
         )
 
     async def auth_callback(
-        self, code: str, redirect_uri: str
+        self, code: str, redirect_uri: str, *, code_verifier: Optional[str] = None
     ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
-        token_response = await self._auth_exchange_token(code, redirect_uri)
+        token_response = await self._auth_exchange_token(
+            code, redirect_uri, code_verifier=code_verifier
+        )
         jwks = await self._get_jwks()
         userinfo = self._decode_id_token(
             token_response["id_token"],
@@ -446,7 +474,9 @@ class FiefAsync(BaseFief):
             self._jwks = jwk.JWKSet.from_json(response.text)
             return self._jwks
 
-    async def _auth_exchange_token(self, code: str, redirect_uri) -> FiefTokenResponse:
+    async def _auth_exchange_token(
+        self, code: str, redirect_uri: str, *, code_verifier: Optional[str] = None
+    ) -> FiefTokenResponse:
         token_endpoint = (await self._get_openid_configuration())["token_endpoint"]
         async with self._get_httpx_client() as client:
             request = self._get_auth_exchange_token_request(
@@ -454,6 +484,7 @@ class FiefAsync(BaseFief):
                 endpoint=token_endpoint,
                 code=code,
                 redirect_uri=redirect_uri,
+                code_verifier=code_verifier,
             )
             response = await client.send(request)
 

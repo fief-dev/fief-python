@@ -55,18 +55,28 @@ def test_serializable_fief_token_response():
 
 class TestAuthURL:
     @pytest.mark.parametrize(
-        "state,scope,extras_params,expected_params",
+        "state,scope,code_challenge,code_challenge_method,extras_params,expected_params",
         [
-            (None, None, None, ""),
-            ("STATE", None, None, "&state=STATE"),
-            (None, ["SCOPE_1", "SCOPE_2"], None, "&scope=SCOPE_1+SCOPE_2"),
-            (None, None, {"foo": "bar"}, "&foo=bar"),
+            (None, None, None, None, None, ""),
+            ("STATE", None, None, None, None, "&state=STATE"),
+            (None, ["SCOPE_1", "SCOPE_2"], None, None, None, "&scope=SCOPE_1+SCOPE_2"),
+            (None, None, None, None, {"foo": "bar"}, "&foo=bar"),
+            (
+                None,
+                None,
+                "CODE_CHALLENGE",
+                "S256",
+                None,
+                "&code_challenge=CODE_CHALLENGE&code_challenge_method=S256",
+            ),
         ],
     )
     def test_authorization_url(
         self,
         state: Optional[str],
         scope: Optional[List[str]],
+        code_challenge: Optional[str],
+        code_challenge_method: Optional[str],
         extras_params: Optional[Mapping[str, str]],
         expected_params: str,
         fief_client: Fief,
@@ -76,6 +86,8 @@ class TestAuthURL:
             "https://www.bretagne.duchy/callback",
             state=state,
             scope=scope,
+            code_challenge=code_challenge,
+            code_challenge_method=code_challenge_method,
             extras_params=extras_params,
         )
         assert (
@@ -92,18 +104,28 @@ class TestAuthURL:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "state,scope,extras_params,expected_params",
+        "state,scope,code_challenge,code_challenge_method,extras_params,expected_params",
         [
-            (None, None, None, ""),
-            ("STATE", None, None, "&state=STATE"),
-            (None, ["SCOPE_1", "SCOPE_2"], None, "&scope=SCOPE_1+SCOPE_2"),
-            (None, None, {"foo": "bar"}, "&foo=bar"),
+            (None, None, None, None, None, ""),
+            ("STATE", None, None, None, None, "&state=STATE"),
+            (None, ["SCOPE_1", "SCOPE_2"], None, None, None, "&scope=SCOPE_1+SCOPE_2"),
+            (None, None, None, None, {"foo": "bar"}, "&foo=bar"),
+            (
+                None,
+                None,
+                "CODE_CHALLENGE",
+                "S256",
+                None,
+                "&code_challenge=CODE_CHALLENGE&code_challenge_method=S256",
+            ),
         ],
     )
     async def test_authorization_url_async(
         self,
         state: Optional[str],
         scope: Optional[List[str]],
+        code_challenge: Optional[str],
+        code_challenge_method: Optional[str],
         extras_params: Optional[Mapping[str, str]],
         expected_params: str,
         fief_async_client: FiefAsync,
@@ -113,6 +135,8 @@ class TestAuthURL:
             "https://www.bretagne.duchy/callback",
             state=state,
             scope=scope,
+            code_challenge=code_challenge,
+            code_challenge_method=code_challenge_method,
             extras_params=extras_params,
         )
         assert (
@@ -148,7 +172,7 @@ class TestAuthCallback:
         )
 
         token_response, userinfo = fief_client.auth_callback(
-            "CODE", "https://www.bretagne.duchy/callback"
+            "CODE", "https://www.bretagne.duchy/callback", code_verifier="CODE_VERIFIER"
         )
 
         token_route_call = token_route.calls.last
@@ -181,7 +205,7 @@ class TestAuthCallback:
         )
 
         token_response, userinfo = await fief_async_client.auth_callback(
-            "CODE", "https://www.bretagne.duchy/callback"
+            "CODE", "https://www.bretagne.duchy/callback", code_verifier="CODE_VERIFIER"
         )
 
         token_route_call = token_route.calls.last
