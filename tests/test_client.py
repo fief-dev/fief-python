@@ -493,3 +493,38 @@ class TestDecodeIdToken:
             fief_client._decode_id_token(
                 id_token, signature_key, code="CODE", access_token="ACCESS_TOKEN"
             )
+
+
+class TestExplicitHost:
+    def test_sync_client(self, mock_api_requests: respx.MockRouter):
+        client = Fief(
+            "http://localhost:8000",
+            "CLIENT_ID",
+            "CLIENT_SECRET",
+            host="www.bretagne.duchy",
+        )
+
+        client.auth_url("https://www.bretagne.duchy/callback")
+
+        assert mock_api_requests.calls.last is not None
+        request, _ = mock_api_requests.calls.last
+        url = str(request.url)
+        assert url.startswith("http://localhost:8000")
+        assert request.headers["Host"] == "www.bretagne.duchy"
+
+    @pytest.mark.asyncio
+    async def test_async_client(self, mock_api_requests: respx.MockRouter):
+        client = FiefAsync(
+            "http://localhost:8000",
+            "CLIENT_ID",
+            "CLIENT_SECRET",
+            host="www.bretagne.duchy",
+        )
+
+        await client.auth_url("https://www.bretagne.duchy/callback")
+
+        assert mock_api_requests.calls.last is not None
+        request, _ = mock_api_requests.calls.last
+        url = str(request.url)
+        assert url.startswith("http://localhost:8000")
+        assert request.headers["Host"] == "www.bretagne.duchy"

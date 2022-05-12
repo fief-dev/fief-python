@@ -69,12 +69,14 @@ class BaseFief:
         client_secret: str,
         *,
         encryption_key: Optional[str] = None,
+        host: Optional[str] = None,
     ) -> None:
         self.base_url = base_url
         self.client_id = client_id
         self.client_secret = client_secret
         if encryption_key is not None:
             self.encryption_key = jwk.JWK.from_json(encryption_key)
+        self.host = host
 
     def _get_endpoint_url(
         self, openid_configuration: Dict[str, Any], field: str
@@ -328,7 +330,11 @@ class Fief(BaseFief):
 
     @contextlib.contextmanager
     def _get_httpx_client(self):
-        with httpx.Client(base_url=self.base_url) as client:
+        headers = {}
+        if self.host is not None:
+            headers["Host"] = self.host
+
+        with httpx.Client(base_url=self.base_url, headers=headers) as client:
             yield client
 
     def _get_openid_configuration(self) -> Dict[str, Any]:
@@ -465,7 +471,11 @@ class FiefAsync(BaseFief):
 
     @contextlib.asynccontextmanager
     async def _get_httpx_client(self):
-        async with httpx.AsyncClient(base_url=self.base_url) as client:
+        headers = {}
+        if self.host is not None:
+            headers["Host"] = self.host
+
+        async with httpx.AsyncClient(base_url=self.base_url, headers=headers) as client:
             yield client
 
     async def _get_openid_configuration(self) -> Dict[str, Any]:
