@@ -76,6 +76,11 @@ class BaseFief:
         if encryption_key is not None:
             self.encryption_key = jwk.JWK.from_json(encryption_key)
 
+    def _get_endpoint_url(
+        self, openid_configuration: Dict[str, Any], field: str
+    ) -> str:
+        return openid_configuration[field]
+
     def _auth_url(
         self,
         openid_configuration: Dict[str, Any],
@@ -106,7 +111,9 @@ class BaseFief:
         if extras_params is not None:
             params = {**params, **extras_params}
 
-        authorization_endpoint = openid_configuration["authorization_endpoint"]
+        authorization_endpoint = self._get_endpoint_url(
+            openid_configuration, "authorization_endpoint"
+        )
         return f"{authorization_endpoint}?{urlencode(params)}"
 
     def _validate_access_token(
@@ -270,7 +277,9 @@ class Fief(BaseFief):
     def auth_refresh_token(
         self, refresh_token: str, *, scope: Optional[List[str]] = None
     ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
-        token_endpoint = self._get_openid_configuration()["token_endpoint"]
+        token_endpoint = self._get_endpoint_url(
+            self._get_openid_configuration(), "token_endpoint"
+        )
         with self._get_httpx_client() as client:
             request = self._get_auth_refresh_token_request(
                 client,
@@ -300,7 +309,9 @@ class Fief(BaseFief):
         )
 
     def userinfo(self, access_token: str) -> Dict[str, Any]:
-        userinfo_endpoint = self._get_openid_configuration()["userinfo_endpoint"]
+        userinfo_endpoint = self._get_endpoint_url(
+            self._get_openid_configuration(), "userinfo_endpoint"
+        )
         with self._get_httpx_client() as client:
             request = self._get_userinfo_request(
                 client, endpoint=userinfo_endpoint, access_token=access_token
@@ -335,7 +346,7 @@ class Fief(BaseFief):
         if self._jwks is not None:
             return self._jwks
 
-        jwks_uri = self._get_openid_configuration()["jwks_uri"]
+        jwks_uri = self._get_endpoint_url(self._get_openid_configuration(), "jwks_uri")
         with self._get_httpx_client() as client:
             response = client.get(jwks_uri)
             self._jwks = jwk.JWKSet.from_json(response.text)
@@ -344,7 +355,9 @@ class Fief(BaseFief):
     def _auth_exchange_token(
         self, code: str, redirect_uri: str, *, code_verifier: Optional[str] = None
     ) -> FiefTokenResponse:
-        token_endpoint = self._get_openid_configuration()["token_endpoint"]
+        token_endpoint = self._get_endpoint_url(
+            self._get_openid_configuration(), "token_endpoint"
+        )
         with self._get_httpx_client() as client:
             request = self._get_auth_exchange_token_request(
                 client,
@@ -400,7 +413,9 @@ class FiefAsync(BaseFief):
     async def auth_refresh_token(
         self, refresh_token: str, *, scope: Optional[List[str]] = None
     ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
-        token_endpoint = (await self._get_openid_configuration())["token_endpoint"]
+        token_endpoint = self._get_endpoint_url(
+            await self._get_openid_configuration(), "token_endpoint"
+        )
         async with self._get_httpx_client() as client:
             request = self._get_auth_refresh_token_request(
                 client,
@@ -431,9 +446,9 @@ class FiefAsync(BaseFief):
         )
 
     async def userinfo(self, access_token: str) -> Dict[str, Any]:
-        userinfo_endpoint = (await self._get_openid_configuration())[
-            "userinfo_endpoint"
-        ]
+        userinfo_endpoint = self._get_endpoint_url(
+            await self._get_openid_configuration(), "userinfo_endpoint"
+        )
         async with self._get_httpx_client() as client:
             request = self._get_userinfo_request(
                 client, endpoint=userinfo_endpoint, access_token=access_token
@@ -468,7 +483,9 @@ class FiefAsync(BaseFief):
         if self._jwks is not None:
             return self._jwks
 
-        jwks_uri = (await self._get_openid_configuration())["jwks_uri"]
+        jwks_uri = self._get_endpoint_url(
+            await self._get_openid_configuration(), "jwks_uri"
+        )
         async with self._get_httpx_client() as client:
             response = await client.get(jwks_uri)
             self._jwks = jwk.JWKSet.from_json(response.text)
@@ -477,7 +494,9 @@ class FiefAsync(BaseFief):
     async def _auth_exchange_token(
         self, code: str, redirect_uri: str, *, code_verifier: Optional[str] = None
     ) -> FiefTokenResponse:
-        token_endpoint = (await self._get_openid_configuration())["token_endpoint"]
+        token_endpoint = self._get_endpoint_url(
+            await self._get_openid_configuration(), "token_endpoint"
+        )
         async with self._get_httpx_client() as client:
             request = self._get_auth_exchange_token_request(
                 client,
