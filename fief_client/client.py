@@ -33,6 +33,9 @@ class FiefAccessTokenInfo(TypedDict):
     access_token: str
 
 
+FiefUserInfo = Dict[str, Any]
+
+
 class FiefError(Exception):
     pass
 
@@ -154,7 +157,7 @@ class BaseFief:
         *,
         code: Optional[str] = None,
         access_token: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> FiefUserInfo:
         try:
             if self.encryption_key is not None:
                 decrypted_id_token = jwt.JWT(jwt=id_token, key=self.encryption_key)
@@ -263,7 +266,7 @@ class Fief(BaseFief):
 
     def auth_callback(
         self, code: str, redirect_uri: str, *, code_verifier: Optional[str] = None
-    ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
+    ) -> Tuple[FiefTokenResponse, FiefUserInfo]:
         token_response = self._auth_exchange_token(
             code, redirect_uri, code_verifier=code_verifier
         )
@@ -278,7 +281,7 @@ class Fief(BaseFief):
 
     def auth_refresh_token(
         self, refresh_token: str, *, scope: Optional[List[str]] = None
-    ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
+    ) -> Tuple[FiefTokenResponse, FiefUserInfo]:
         token_endpoint = self._get_endpoint_url(
             self._get_openid_configuration(), "token_endpoint"
         )
@@ -310,7 +313,7 @@ class Fief(BaseFief):
             access_token, jwks, required_scope=required_scope
         )
 
-    def userinfo(self, access_token: str) -> Dict[str, Any]:
+    def userinfo(self, access_token: str) -> FiefUserInfo:
         userinfo_endpoint = self._get_endpoint_url(
             self._get_openid_configuration(), "userinfo_endpoint"
         )
@@ -403,7 +406,7 @@ class FiefAsync(BaseFief):
 
     async def auth_callback(
         self, code: str, redirect_uri: str, *, code_verifier: Optional[str] = None
-    ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
+    ) -> Tuple[FiefTokenResponse, FiefUserInfo]:
         token_response = await self._auth_exchange_token(
             code, redirect_uri, code_verifier=code_verifier
         )
@@ -418,7 +421,7 @@ class FiefAsync(BaseFief):
 
     async def auth_refresh_token(
         self, refresh_token: str, *, scope: Optional[List[str]] = None
-    ) -> Tuple[FiefTokenResponse, Dict[str, Any]]:
+    ) -> Tuple[FiefTokenResponse, FiefUserInfo]:
         token_endpoint = self._get_endpoint_url(
             await self._get_openid_configuration(), "token_endpoint"
         )
@@ -451,7 +454,7 @@ class FiefAsync(BaseFief):
             access_token, jwks, required_scope=required_scope
         )
 
-    async def userinfo(self, access_token: str) -> Dict[str, Any]:
+    async def userinfo(self, access_token: str) -> FiefUserInfo:
         userinfo_endpoint = self._get_endpoint_url(
             await self._get_openid_configuration(), "userinfo_endpoint"
         )
