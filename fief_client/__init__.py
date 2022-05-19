@@ -9,6 +9,7 @@ from fief_client.client import (
     FiefError,
     FiefIdTokenInvalid,
     FiefTokenResponse,
+    FiefUserInfo,
 )
 
 __version__ = "0.9.0"
@@ -18,6 +19,7 @@ __all__ = [
     "FiefAsync",
     "FiefTokenResponse",
     "FiefAccessTokenInfo",
+    "FiefUserInfo",
     "FiefError",
     "FiefAccessTokenExpired",
     "FiefAccessTokenMissingScope",

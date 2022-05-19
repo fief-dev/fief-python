@@ -241,6 +241,21 @@ class BaseFief:
             "GET", endpoint, headers={"Authorization": f"Bearer {access_token}"}
         )
 
+    def _get_update_profile_request(
+        self,
+        client: HTTPXClient,
+        *,
+        endpoint: str,
+        access_token: str,
+        data: Dict[str, Any],
+    ) -> httpx.Request:
+        return client.build_request(
+            "PATCH",
+            endpoint,
+            headers={"Authorization": f"Bearer {access_token}"},
+            json=data,
+        )
+
 
 class Fief(BaseFief):
     def auth_url(
@@ -320,6 +335,22 @@ class Fief(BaseFief):
         with self._get_httpx_client() as client:
             request = self._get_userinfo_request(
                 client, endpoint=userinfo_endpoint, access_token=access_token
+            )
+            response = client.send(request)
+
+            response.raise_for_status()
+
+            return response.json()
+
+    def update_profile(self, access_token: str, data: Dict[str, Any]) -> FiefUserInfo:
+        update_profile_endpoint = f"{self.base_url}/profile"
+
+        with self._get_httpx_client() as client:
+            request = self._get_update_profile_request(
+                client,
+                endpoint=update_profile_endpoint,
+                access_token=access_token,
+                data=data,
             )
             response = client.send(request)
 
@@ -461,6 +492,24 @@ class FiefAsync(BaseFief):
         async with self._get_httpx_client() as client:
             request = self._get_userinfo_request(
                 client, endpoint=userinfo_endpoint, access_token=access_token
+            )
+            response = await client.send(request)
+
+            response.raise_for_status()
+
+            return response.json()
+
+    async def update_profile(
+        self, access_token: str, data: Dict[str, Any]
+    ) -> FiefUserInfo:
+        update_profile_endpoint = f"{self.base_url}/profile"
+
+        async with self._get_httpx_client() as client:
+            request = self._get_update_profile_request(
+                client,
+                endpoint=update_profile_endpoint,
+                access_token=access_token,
+                data=data,
             )
             response = await client.send(request)
 

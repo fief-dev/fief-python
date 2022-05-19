@@ -391,6 +391,36 @@ class TestUserinfo:
         assert userinfo == {"sub": user_id}
 
 
+class TestUpdateProfile:
+    def test_valid_response(
+        self, fief_client: Fief, mock_api_requests: respx.MockRouter, user_id: str
+    ):
+        mock_api_requests.patch("/profile").return_value = Response(
+            200, json={"sub": user_id}
+        )
+
+        userinfo = fief_client.update_profile(
+            "ACCESS_TOKEN", {"email": "anne@bretagne.duchy"}
+        )
+        assert userinfo == {"sub": user_id}
+
+    @pytest.mark.asyncio
+    async def test_valid_response_async(
+        self,
+        fief_async_client: FiefAsync,
+        mock_api_requests: respx.MockRouter,
+        user_id: str,
+    ):
+        mock_api_requests.patch("/profile").return_value = Response(
+            200, json={"sub": user_id}
+        )
+
+        userinfo = await fief_async_client.update_profile(
+            "ACCESS_TOKEN", {"email": "anne@bretagne.duchy"}
+        )
+        assert userinfo == {"sub": user_id}
+
+
 class TestLogoutURL:
     def test_logout_url(self, fief_client: Fief):
         logout_url = fief_client.logout_url("https://www.bretagne.duchy")
