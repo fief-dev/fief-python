@@ -1,3 +1,4 @@
+import uuid
 from functools import wraps
 from typing import Callable, List, Optional
 
@@ -6,8 +7,10 @@ from flask import g, request
 from fief_client import (
     Fief,
     FiefAccessTokenExpired,
+    FiefAccessTokenInfo,
     FiefAccessTokenInvalid,
     FiefAccessTokenMissingScope,
+    FiefUserInfo,
 )
 
 
@@ -24,6 +27,8 @@ class FiefAuthForbidden(FiefAuthError):
 
 
 TokenGetter = Callable[[], Optional[str]]
+UserInfoCacheGetter = Callable[[uuid.UUID], Optional[FiefUserInfo]]
+UserInfoCacheSetter = Callable[[uuid.UUID, FiefUserInfo], None]
 
 
 def get_authorization_scheme_token(*, scheme: str = "bearer") -> TokenGetter:
@@ -47,12 +52,21 @@ def get_cookie(cookie_name: str) -> TokenGetter:
 
 
 class FiefAuth:
-    def __init__(self, client: Fief, token_getter: TokenGetter) -> None:
+    def __init__(
+        self,
+        client: Fief,
+        token_getter: TokenGetter,
+        *,
+        get_userinfo_cache: Optional[UserInfoCacheGetter] = None,
+        set_userinfo_cache: Optional[UserInfoCacheSetter] = None
+    ) -> None:
         self.client = client
         self.token_getter = token_getter
+        self.get_userinfo_cache = get_userinfo_cache
+        self.set_userinfo_cache = set_userinfo_cache
 
-    def current_user(self, *, scope: Optional[List[str]] = None):
-        def _current_user(f):
+    def authenticated(self, *, scope: Optional[List[str]] = None):
+        def _authenticated(f):
             @wraps(f)
             def decorated_function(*args, **kwargs):
                 token = self.token_getter()
@@ -68,7 +82,32 @@ class FiefAuth:
                 except FiefAccessTokenMissingScope as e:
                     raise FiefAuthForbidden() from e
 
-                g.user = info
+                g.access_token_info = info
+
+                return f(*args, **kwargs)
+
+            return decorated_function
+
+        return _authenticated
+
+    def current_user(self, *, scope: Optional[List[str]] = None, refresh: bool = False):
+        def _current_user(f):
+            @wraps(f)
+            @self.authenticated(scope=scope)
+            def decorated_function(*args, **kwargs):
+                access_token_info: FiefAccessTokenInfo = g.access_token_info
+
+                userinfo = None
+                if self.get_userinfo_cache is not None:
+                    userinfo = self.get_userinfo_cache(access_token_info["id"])
+
+                if userinfo is None or refresh:
+                    userinfo = self.client.userinfo(access_token_info["access_token"])
+
+                    if self.set_userinfo_cache is not None:
+                        self.set_userinfo_cache(access_token_info["id"], userinfo)
+
+                g.user = userinfo
 
                 return f(*args, **kwargs)
 
