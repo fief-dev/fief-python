@@ -3,7 +3,7 @@ from typing import Dict, Generator, Optional
 
 import pytest
 import respx
-from flask import Flask, g
+from flask import Flask, g, session
 from flask.testing import FlaskClient
 from httpx import Response
 
@@ -24,13 +24,11 @@ def fief_client() -> Fief:
 
 @pytest.fixture(scope="module")
 def flask_app(fief_client: Fief) -> Generator[Flask, None, None]:
-    userinfo_cache: Dict[uuid.UUID, FiefUserInfo] = {}
-
     def get_userinfo_cache(id: uuid.UUID) -> Optional[FiefUserInfo]:
-        return userinfo_cache.get(id)
+        return session.get(f"userinfo-{str(id)}")
 
     def set_userinfo_cache(id: uuid.UUID, userinfo: FiefUserInfo) -> None:
-        userinfo_cache[id] = userinfo
+        session[f"userinfo-{str(id)}"] = userinfo
 
     auth = FiefAuth(
         fief_client,
@@ -39,6 +37,7 @@ def flask_app(fief_client: Fief) -> Generator[Flask, None, None]:
         set_userinfo_cache=set_userinfo_cache,
     )
     app = Flask(__name__)
+    app.secret_key = "SECRET_KEY"
     app.config.update({"TESTING": True})
 
     @app.errorhandler(FiefAuthUnauthorized)
