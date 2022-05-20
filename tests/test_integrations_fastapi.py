@@ -1,15 +1,17 @@
 import uuid
-from typing import AsyncGenerator, List
+from typing import AsyncGenerator, Dict, List, Optional
 
 import httpx
 import pytest
 import pytest_asyncio
+import respx
 from fastapi import Depends, FastAPI, status
 from fastapi.security.base import SecurityBase
 from fastapi.security.http import HTTPBearer
 from fastapi.security.oauth2 import OAuth2PasswordBearer
+from httpx import Response
 
-from fief_client.client import Fief, FiefAccessTokenInfo, FiefAsync
+from fief_client.client import Fief, FiefAccessTokenInfo, FiefAsync, FiefUserInfo
 from fief_client.integrations.fastapi import FiefAuth, FiefClientClass
 
 
@@ -32,12 +34,47 @@ def scheme(request) -> SecurityBase:
 
 @pytest.fixture(scope="module")
 def fastapi_app(fief_client: FiefClientClass, scheme: SecurityBase) -> FastAPI:
-    auth = FiefAuth(fief_client, scheme)
+    class MemoryUserinfoCache:
+        def __init__(self) -> None:
+            self.storage: Dict[uuid.UUID, FiefUserInfo] = {}
+
+        async def get(self, user_id: uuid.UUID) -> Optional[FiefUserInfo]:
+            return self.storage.get(user_id)
+
+        async def set(self, user_id: uuid.UUID, userinfo: FiefUserInfo) -> None:
+            self.storage[user_id] = userinfo
+
+    memory_userinfo_cache = MemoryUserinfoCache()
+
+    async def get_memory_userinfo_cache() -> MemoryUserinfoCache:
+        return memory_userinfo_cache
+
+    auth = FiefAuth(fief_client, scheme, get_userinfo_cache=get_memory_userinfo_cache)
     app = FastAPI()
+
+    @app.get("/authenticated")
+    async def get_authenticated(
+        access_token_info: FiefAccessTokenInfo = Depends(auth.authenticated()),
+    ):
+        return access_token_info
+
+    @app.get("/authenticated-scope")
+    async def get_authenticated_scope(
+        access_token_info: FiefAccessTokenInfo = Depends(
+            auth.authenticated(scope=["required_scope"])
+        ),
+    ):
+        return access_token_info
 
     @app.get("/current-user")
     async def get_current_user(
         current_user: FiefAccessTokenInfo = Depends(auth.current_user()),
+    ):
+        return current_user
+
+    @app.get("/current-user-refresh")
+    async def get_current_user_refresh(
+        current_user: FiefAccessTokenInfo = Depends(auth.current_user(refresh=True)),
     ):
         return current_user
 
@@ -71,65 +108,180 @@ async def test_openapi(test_client: httpx.AsyncClient, scheme: SecurityBase):
 
 
 @pytest.mark.asyncio
-async def test_missing_token(test_client: httpx.AsyncClient):
-    response = await test_client.get("/current-user")
+class TestAuthenticated:
+    async def test_missing_token(self, test_client: httpx.AsyncClient):
+        response = await test_client.get("/authenticated")
 
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    async def test_expired_token(self, test_client: httpx.AsyncClient, generate_token):
+        access_token = generate_token(encrypt=False, exp=0)
+
+        response = await test_client.get(
+            "/authenticated", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    async def test_valid_token(
+        self, test_client: httpx.AsyncClient, generate_token, user_id: str
+    ):
+        access_token = generate_token(encrypt=False, scope="openid")
+
+        response = await test_client.get(
+            "/authenticated", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        json = response.json()
+        assert json == {
+            "id": user_id,
+            "scope": ["openid"],
+            "access_token": access_token,
+        }
+
+    async def test_missing_scope(self, test_client: httpx.AsyncClient, generate_token):
+        access_token = generate_token(encrypt=False, scope="openid")
+
+        response = await test_client.get(
+            "/authenticated-scope", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    async def test_valid_scope(
+        self, test_client: httpx.AsyncClient, generate_token, user_id: str
+    ):
+        access_token = generate_token(encrypt=False, scope="openid required_scope")
+
+        response = await test_client.get(
+            "/authenticated-scope", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        json = response.json()
+        assert json == {
+            "id": user_id,
+            "scope": ["openid", "required_scope"],
+            "access_token": access_token,
+        }
 
 
 @pytest.mark.asyncio
-async def test_expired_token(test_client: httpx.AsyncClient, generate_token):
-    access_token = generate_token(encrypt=False, exp=0)
+class TestCurrentUser:
+    async def test_missing_token(self, test_client: httpx.AsyncClient):
+        response = await test_client.get("/current-user")
 
-    response = await test_client.get(
-        "/current-user", headers={"Authorization": f"Bearer {access_token}"}
-    )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    async def test_expired_token(self, test_client: httpx.AsyncClient, generate_token):
+        access_token = generate_token(encrypt=False, exp=0)
 
+        response = await test_client.get(
+            "/current-user", headers={"Authorization": f"Bearer {access_token}"}
+        )
 
-@pytest.mark.asyncio
-async def test_valid_token(
-    test_client: httpx.AsyncClient, generate_token, user_id: str
-):
-    access_token = generate_token(encrypt=False, scope="openid")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    response = await test_client.get(
-        "/current-user", headers={"Authorization": f"Bearer {access_token}"}
-    )
+    async def test_valid_token(
+        self,
+        test_client: httpx.AsyncClient,
+        generate_token,
+        mock_api_requests: respx.MockRouter,
+        user_id: str,
+    ):
+        mock_api_requests.get("/userinfo").reset()
+        mock_api_requests.get("/userinfo").return_value = Response(
+            200, json={"sub": user_id}
+        )
 
-    assert response.status_code == status.HTTP_200_OK
+        access_token = generate_token(encrypt=False, scope="openid")
 
-    json = response.json()
-    assert json == {"id": user_id, "scope": ["openid"], "access_token": access_token}
+        response = await test_client.get(
+            "/current-user", headers={"Authorization": f"Bearer {access_token}"}
+        )
 
+        assert response.status_code == status.HTTP_200_OK
 
-@pytest.mark.asyncio
-async def test_missing_scope(test_client: httpx.AsyncClient, generate_token):
-    access_token = generate_token(encrypt=False, scope="openid")
+        json = response.json()
+        assert json == {"sub": user_id}
 
-    response = await test_client.get(
-        "/current-user-scope", headers={"Authorization": f"Bearer {access_token}"}
-    )
+        # Check cache is working
+        response_2 = await test_client.get(
+            "/current-user", headers={"Authorization": f"Bearer {access_token}"}
+        )
 
-    assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response_2.status_code == status.HTTP_200_OK
 
+        json = response_2.json()
+        assert json == {"sub": user_id}
 
-@pytest.mark.asyncio
-async def test_valid_scope(
-    test_client: httpx.AsyncClient, generate_token, user_id: str
-):
-    access_token = generate_token(encrypt=False, scope="openid required_scope")
+        assert mock_api_requests.get("/userinfo").call_count == 1
 
-    response = await test_client.get(
-        "/current-user-scope", headers={"Authorization": f"Bearer {access_token}"}
-    )
+    async def test_missing_scope(self, test_client: httpx.AsyncClient, generate_token):
+        access_token = generate_token(encrypt=False, scope="openid")
 
-    assert response.status_code == status.HTTP_200_OK
+        response = await test_client.get(
+            "/current-user-scope", headers={"Authorization": f"Bearer {access_token}"}
+        )
 
-    json = response.json()
-    assert json == {
-        "id": user_id,
-        "scope": ["openid", "required_scope"],
-        "access_token": access_token,
-    }
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    async def test_valid_scope(
+        self,
+        test_client: httpx.AsyncClient,
+        generate_token,
+        mock_api_requests: respx.MockRouter,
+        user_id: str,
+    ):
+        mock_api_requests.get("/userinfo").return_value = Response(
+            200, json={"sub": user_id}
+        )
+
+        access_token = generate_token(encrypt=False, scope="openid required_scope")
+
+        response = await test_client.get(
+            "/current-user-scope", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        json = response.json()
+        assert json == {"sub": user_id}
+
+    async def test_valid_refresh(
+        self,
+        test_client: httpx.AsyncClient,
+        generate_token,
+        mock_api_requests: respx.MockRouter,
+        user_id: str,
+    ):
+        mock_api_requests.get("/userinfo").reset()
+        mock_api_requests.get("/userinfo").return_value = Response(
+            200, json={"sub": user_id}
+        )
+
+        access_token = generate_token(encrypt=False, scope="openid")
+
+        response = await test_client.get(
+            "/current-user-refresh", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        json = response.json()
+        assert json == {"sub": user_id}
+
+        # Check cache is not used with refresh
+        response_2 = await test_client.get(
+            "/current-user-refresh", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response_2.status_code == status.HTTP_200_OK
+
+        json = response_2.json()
+        assert json == {"sub": user_id}
+
+        assert mock_api_requests.get("/userinfo").call_count == 2
