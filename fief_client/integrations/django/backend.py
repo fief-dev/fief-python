@@ -1,5 +1,5 @@
 import uuid
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from django.contrib.auth.backends import BaseBackend
 from django.http import HttpRequest
@@ -12,19 +12,21 @@ class FiefBackend(BaseBackend):
         self, request: Optional[HttpRequest], **kwargs
     ) -> Optional[FiefUser]:
         fief_id: Optional[uuid.UUID] = kwargs.get("fief_id")
+        fief_tenant_id: Optional[uuid.UUID] = kwargs.get("fief_tenant_id")
+        fields: Optional[Dict[str, Any]] = kwargs.get("fields")
         email: Optional[str] = kwargs.get("email")
 
         if fief_id is None:
             return None
 
-        try:
-            user = FiefUser.objects.get(fief_id=fief_id)
-        except FiefUser.DoesNotExist:
-            user = FiefUser.objects.create(fief_id=fief_id, email=email)
-
-        if email is not None and user.email != email:
-            user.email = email
-            user.save()
+        defaults: Dict[str, Any] = {}
+        if fief_tenant_id is not None:
+            defaults["fief_tenant_id"] = fief_tenant_id
+        if email is not None:
+            defaults["email"] = email
+        if fields is not None:
+            defaults["fields"] = fields
+        user, _ = FiefUser.objects.update_or_create(fief_id=fief_id, defaults=defaults)
 
         return user
 

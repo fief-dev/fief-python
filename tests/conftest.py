@@ -32,7 +32,14 @@ def user_id() -> str:
 
 
 @pytest.fixture(scope="session")
-def generate_token(signature_key: jwk.JWK, encryption_key: jwk.JWK, user_id: str):
+def tenant_id() -> str:
+    return str(uuid.uuid4())
+
+
+@pytest.fixture(scope="session")
+def generate_token(
+    signature_key: jwk.JWK, encryption_key: jwk.JWK, user_id: str, tenant_id: str
+):
     def _generate_token(encrypt: bool, **kwargs) -> str:
         iat = int(datetime.now(timezone.utc).timestamp())
         exp = iat + 3600
@@ -40,6 +47,10 @@ def generate_token(signature_key: jwk.JWK, encryption_key: jwk.JWK, user_id: str
         claims = {
             "sub": user_id,
             "email": "anne@bretagne.duchy",
+            "tenant_id": tenant_id,
+            "is_active": True,
+            "is_superuser": False,
+            "is_verified": True,
             "iss": "https://bretagne.fief.dev",
             "aud": ["CLIENT_ID"],
             "exp": exp,

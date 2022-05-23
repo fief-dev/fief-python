@@ -28,7 +28,13 @@ def callback(request: HttpRequest):
     fief = get_fief_client()
     _, userinfo = fief.auth_callback(request.GET["code"], redirect_uri)
     user = authenticate(
-        request, fief_id=uuid.UUID(userinfo["sub"]), email=userinfo["email"]
+        request,
+        fief_id=uuid.UUID(userinfo["sub"]),
+        fief_tenant_id=uuid.UUID(userinfo["tenant_id"]),
+        is_active=userinfo["is_active"],
+        is_superuser=userinfo["is_superuser"],
+        email=userinfo["email"],
+        fields=userinfo["fields"],
     )
     if user is not None:
         dj_login(request, user)

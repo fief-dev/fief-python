@@ -10,18 +10,26 @@ class FiefUserManager(models.Manager):
 
 class FiefUser(PermissionsMixin):
     fief_id = models.UUIDField(unique=True)
-    email = models.EmailField(unique=True)
-    is_staff = models.BooleanField(
-        _("staff status"),
-        default=False,
-        help_text=_("Designates whether the user can log into this admin site."),
+    fief_tenant_id = models.UUIDField()
+    is_active = models.BooleanField(
+        _("active"),
+        default=True,
+        help_text=_(
+            "Designates whether this user should be treated as active. "
+            "Unselect this instead of deleting accounts."
+        ),
     )
+    email = models.EmailField()
+    fields = models.JSONField(default=dict)
 
     REQUIRED_FIELDS = ["fief_id"]
     USERNAME_FIELD = "email"
     EMAIL_FIELD = "email"
 
     objects = FiefUserManager()
+
+    class Meta:
+        unique_together = [["email", "fief_tenant_id"]]
 
     @property
     def is_anonymous(self) -> bool:
@@ -40,8 +48,8 @@ class FiefUser(PermissionsMixin):
         return True
 
     @property
-    def is_active(self) -> bool:
-        return True
+    def is_staff(self) -> bool:
+        return self.fields.get("is_staff", False)
 
     def get_full_name(self) -> str:
         """
