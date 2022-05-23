@@ -9,18 +9,19 @@ class FiefUserManager(models.Manager):
 
 
 class FiefUser(PermissionsMixin):
-    fief_id = models.UUIDField(unique=True)
-    fief_tenant_id = models.UUIDField()
+    fief_id = models.UUIDField(unique=True, editable=False)
+    fief_tenant_id = models.UUIDField(editable=False)
     is_active = models.BooleanField(
         _("active"),
         default=True,
+        editable=False,
         help_text=_(
             "Designates whether this user should be treated as active. "
             "Unselect this instead of deleting accounts."
         ),
     )
-    email = models.EmailField()
-    fields = models.JSONField(default=dict)
+    email = models.EmailField(editable=False)
+    fields = models.JSONField(default=dict, editable=False)
 
     REQUIRED_FIELDS = ["fief_id"]
     USERNAME_FIELD = "email"
