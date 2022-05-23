@@ -8,5 +8,8 @@ from fief_client.client import Fief
 @lru_cache()
 def get_fief_client() -> Fief:
     return Fief(
-        settings.FIEF_BASE_URL, settings.FIEF_CLIENT_ID, settings.FIEF_CLIENT_SECRET
+        settings.FIEF_BASE_URL,
+        settings.FIEF_CLIENT_ID,
+        settings.FIEF_CLIENT_SECRET,
+        encryption_key=getattr(settings, "FIEF_ENCRYPTION_KEY", None),
     )
