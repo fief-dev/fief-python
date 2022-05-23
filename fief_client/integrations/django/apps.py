@@ -27,3 +27,7 @@ class FiefAuthConfig(AppConfig):
                 raise FiefAuthImproperlyConfigured(
                     f"The setting {setting} is missing"
                 )  # pragma: no cover
+
+        silenced_system_checks = getattr(settings, "SILENCED_SYSTEM_CHECKS", [])
+        silenced_system_checks.append("auth.W004")
+        setattr(settings, "SILENCED_SYSTEM_CHECKS", silenced_system_checks)
