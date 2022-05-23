@@ -8,7 +8,7 @@ install:
   pip install flit
   flit install --deps all
 
-lint:
+lint $PYTHONPATH=".":
 	isort ./fief_client && isort ./tests && black . && mypy fief_client/
 
 test:

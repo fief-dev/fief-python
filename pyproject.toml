@@ -5,11 +5,20 @@ profile = "black"
 module = "jwcrypto.*"
 ignore_missing_imports = true
 
+[tool.mypy]
+plugins = ["mypy_django_plugin.main"]
+
+[tool.django-stubs]
+django_settings_module = "tests.django_settings"
+
 [tool.coverage.run]
 concurrency = ["greenlet"]
 
 [tool.pytest.ini_options]
+pythonpath = "."
 asyncio_mode = "strict"
+DJANGO_SETTINGS_MODULE = "tests.django_settings"
+
 
 [build-system]
 requires = ["flit_core >=3.2,<4"]
@@ -46,12 +55,14 @@ dev = [
   "black",
   "bumpversion",
   "coverage[toml]",
+  "django-stubs",
   "flit",
   "greenlet",
   "isort",
   "mypy",
   "pytest",
   "pytest-cov",
+  "pytest-django",
   "pytest-asyncio",
   "pytest-mock",
   "respx",
@@ -66,6 +77,10 @@ fastapi = [
 
 flask = [
   "flask",
+]
+
+django = [
+  "django",
 ]
 
 [project.urls]
