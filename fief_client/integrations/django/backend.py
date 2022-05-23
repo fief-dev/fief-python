@@ -28,7 +28,7 @@ class FiefBackend(BaseBackend):
 
         return user
 
-    def get_user(self, user_id):
+    def get_user(self, user_id) -> Optional[FiefUser]:  # type: ignore
         try:
             return FiefUser.objects.get(pk=user_id)
         except FiefUser.DoesNotExist:
