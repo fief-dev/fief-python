@@ -11,6 +11,7 @@ from fief_client.client import (
     Fief,
     FiefAccessTokenExpired,
     FiefAccessTokenInvalid,
+    FiefAccessTokenMissingPermission,
     FiefAccessTokenMissingScope,
     FiefAsync,
     FiefIdTokenInvalid,
@@ -299,24 +300,54 @@ class TestValidateAccessToken:
                 "eyJhbGciOiJSUzI1NiJ9.e30.RmKxjgPljzJL_-Yp9oBJIvNejvES_pnTeZBDvptYcdWm4Ze9D6FlM8RFJ5-ZJ3O-HXlWylVXiGAE_wdSGXehSaENUN3Mj91j5OfiXGrtBGSiEiCtC9HYKCi6xf6xmcEPoTbtBVi38a9OARoJlpTJ5T4BbmqIUR8R06sqo3zTkwk48wPmYtk_OPgMv4c8tNyHF17dRe1JM_ix-m7V1Nv_2DHLMRgMXdsWkl0RCcAFQwqCTXU4UxWSoXp6CB0-Ybkq-P5KyXIXy0b15qG8jfgCrFHqFhN3hpyvL4Zza_EkXJaCkB5v-oztlHS6gTGb3QgFqppW3JM6TJnDKslGRPDsjg"
             )
 
-    def test_expired(self, fief_client: Fief, generate_token):
-        access_token = generate_token(encrypt=False, exp=0)
+    def test_expired(self, fief_client: Fief, generate_access_token):
+        access_token = generate_access_token(encrypt=False, exp=0)
         with pytest.raises(FiefAccessTokenExpired):
             fief_client.validate_access_token(access_token)
 
-    def test_missing_scope(self, fief_client: Fief, generate_token):
-        access_token = generate_token(encrypt=False, scope="openid offline_access")
+    def test_missing_scope(self, fief_client: Fief, generate_access_token):
+        access_token = generate_access_token(
+            encrypt=False, scope="openid offline_access"
+        )
         with pytest.raises(FiefAccessTokenMissingScope):
             fief_client.validate_access_token(access_token, required_scope=["REQUIRED"])
 
-    def test_valid(self, fief_client: Fief, generate_token, user_id: str):
-        access_token = generate_token(encrypt=False, scope="openid offline_access")
+    def test_valid_scope(self, fief_client: Fief, generate_access_token, user_id: str):
+        access_token = generate_access_token(
+            encrypt=False, scope="openid offline_access"
+        )
         info = fief_client.validate_access_token(
             access_token, required_scope=["openid"]
         )
         assert info == {
             "id": uuid.UUID(user_id),
             "scope": ["openid", "offline_access"],
+            "permissions": [],
+            "access_token": access_token,
+        }
+
+    def test_missing_permission(self, fief_client: Fief, generate_access_token):
+        access_token = generate_access_token(
+            encrypt=False, permissions=["castles:read"]
+        )
+        with pytest.raises(FiefAccessTokenMissingPermission):
+            fief_client.validate_access_token(
+                access_token, required_permissions=["castles:create"]
+            )
+
+    def test_valid_permission(
+        self, fief_client: Fief, generate_access_token, user_id: str
+    ):
+        access_token = generate_access_token(
+            encrypt=False, permissions=["castles:read", "castles:create"]
+        )
+        info = fief_client.validate_access_token(
+            access_token, required_permissions=["castles:create"]
+        )
+        assert info == {
+            "id": uuid.UUID(user_id),
+            "scope": [],
+            "permissions": ["castles:read", "castles:create"],
             "access_token": access_token,
         }
 
@@ -335,32 +366,68 @@ class TestValidateAccessToken:
             )
 
     @pytest.mark.asyncio
-    async def test_async_expired(self, fief_async_client: FiefAsync, generate_token):
-        access_token = generate_token(encrypt=False, exp=0)
+    async def test_async_expired(
+        self, fief_async_client: FiefAsync, generate_access_token
+    ):
+        access_token = generate_access_token(encrypt=False, exp=0)
         with pytest.raises(FiefAccessTokenExpired):
             await fief_async_client.validate_access_token(access_token)
 
     @pytest.mark.asyncio
     async def test_async_missing_scope(
-        self, fief_async_client: FiefAsync, generate_token
+        self, fief_async_client: FiefAsync, generate_access_token
     ):
-        access_token = generate_token(encrypt=False, scope="openid offline_access")
+        access_token = generate_access_token(
+            encrypt=False, scope="openid offline_access"
+        )
         with pytest.raises(FiefAccessTokenMissingScope):
             await fief_async_client.validate_access_token(
                 access_token, required_scope=["REQUIRED"]
             )
 
     @pytest.mark.asyncio
-    async def test_async_valid(
-        self, fief_async_client: FiefAsync, generate_token, user_id: str
+    async def test_async_valid_scope(
+        self, fief_async_client: FiefAsync, generate_access_token, user_id: str
     ):
-        access_token = generate_token(encrypt=False, scope="openid offline_access")
+        access_token = generate_access_token(
+            encrypt=False, scope="openid offline_access"
+        )
         info = await fief_async_client.validate_access_token(
             access_token, required_scope=["openid"]
         )
         assert info == {
             "id": uuid.UUID(user_id),
             "scope": ["openid", "offline_access"],
+            "permissions": [],
+            "access_token": access_token,
+        }
+
+    @pytest.mark.asyncio
+    async def test_async_missing_permission(
+        self, fief_async_client: FiefAsync, generate_access_token
+    ):
+        access_token = generate_access_token(
+            encrypt=False, permissions=["castles:read"]
+        )
+        with pytest.raises(FiefAccessTokenMissingPermission):
+            await fief_async_client.validate_access_token(
+                access_token, required_permissions=["castles:create"]
+            )
+
+    @pytest.mark.asyncio
+    async def test_async_valid_permission(
+        self, fief_async_client: FiefAsync, generate_access_token, user_id: str
+    ):
+        access_token = generate_access_token(
+            encrypt=False, permissions=["castles:read", "castles:create"]
+        )
+        info = await fief_async_client.validate_access_token(
+            access_token, required_permissions=["castles:create"]
+        )
+        assert info == {
+            "id": uuid.UUID(user_id),
+            "scope": [],
+            "permissions": ["castles:read", "castles:create"],
             "access_token": access_token,
         }
 

@@ -12,6 +12,7 @@ from fief_client import (
     FiefAccessTokenMissingScope,
     FiefUserInfo,
 )
+from fief_client.client import FiefAccessTokenMissingPermission
 
 
 class FiefAuthError(Exception):
@@ -58,14 +59,19 @@ class FiefAuth:
         token_getter: TokenGetter,
         *,
         get_userinfo_cache: Optional[UserInfoCacheGetter] = None,
-        set_userinfo_cache: Optional[UserInfoCacheSetter] = None
+        set_userinfo_cache: Optional[UserInfoCacheSetter] = None,
     ) -> None:
         self.client = client
         self.token_getter = token_getter
         self.get_userinfo_cache = get_userinfo_cache
         self.set_userinfo_cache = set_userinfo_cache
 
-    def authenticated(self, *, scope: Optional[List[str]] = None):
+    def authenticated(
+        self,
+        *,
+        scope: Optional[List[str]] = None,
+        permissions: Optional[List[str]] = None,
+    ):
         def _authenticated(f):
             @wraps(f)
             def decorated_function(*args, **kwargs):
@@ -75,11 +81,14 @@ class FiefAuth:
 
                 try:
                     info = self.client.validate_access_token(
-                        token, required_scope=scope
+                        token, required_scope=scope, required_permissions=permissions
                     )
                 except (FiefAccessTokenInvalid, FiefAccessTokenExpired) as e:
                     raise FiefAuthUnauthorized() from e
-                except FiefAccessTokenMissingScope as e:
+                except (
+                    FiefAccessTokenMissingScope,
+                    FiefAccessTokenMissingPermission,
+                ) as e:
                     raise FiefAuthForbidden() from e
 
                 g.access_token_info = info
@@ -90,10 +99,16 @@ class FiefAuth:
 
         return _authenticated
 
-    def current_user(self, *, scope: Optional[List[str]] = None, refresh: bool = False):
+    def current_user(
+        self,
+        *,
+        scope: Optional[List[str]] = None,
+        permissions: Optional[List[str]] = None,
+        refresh: bool = False,
+    ):
         def _current_user(f):
             @wraps(f)
-            @self.authenticated(scope=scope)
+            @self.authenticated(scope=scope, permissions=permissions)
             def decorated_function(*args, **kwargs):
                 access_token_info: FiefAccessTokenInfo = g.access_token_info
 

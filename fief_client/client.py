@@ -30,6 +30,7 @@ class FiefTokenResponse(TypedDict):
 class FiefAccessTokenInfo(TypedDict):
     id: uuid.UUID
     scope: List[str]
+    permissions: List[str]
     access_token: str
 
 
@@ -49,6 +50,10 @@ class FiefAccessTokenExpired(FiefError):
 
 
 class FiefAccessTokenMissingScope(FiefError):
+    pass
+
+
+class FiefAccessTokenMissingPermission(FiefError):
     pass
 
 
@@ -127,6 +132,7 @@ class BaseFief:
         jwks: jwk.JWKSet,
         *,
         required_scope: Optional[List[str]] = None,
+        required_permissions: Optional[List[str]] = None,
     ) -> FiefAccessTokenInfo:
         try:
             decoded_token = jwt.JWT(jwt=access_token, algs=["RS256"], key=jwks)
@@ -137,9 +143,16 @@ class BaseFief:
                     if scope not in access_token_scope:
                         raise FiefAccessTokenMissingScope()
 
+            permissions: List[str] = claims["permissions"]
+            if required_permissions is not None:
+                for required_permission in required_permissions:
+                    if required_permission not in permissions:
+                        raise FiefAccessTokenMissingPermission()
+
             return {
                 "id": uuid.UUID(claims["sub"]),
                 "scope": access_token_scope,
+                "permissions": permissions,
                 "access_token": access_token,
             }
 
@@ -321,11 +334,18 @@ class Fief(BaseFief):
         return token_response, userinfo
 
     def validate_access_token(
-        self, access_token: str, *, required_scope: Optional[List[str]] = None
+        self,
+        access_token: str,
+        *,
+        required_scope: Optional[List[str]] = None,
+        required_permissions: Optional[List[str]] = None,
     ) -> FiefAccessTokenInfo:
         jwks = self._get_jwks()
         return self._validate_access_token(
-            access_token, jwks, required_scope=required_scope
+            access_token,
+            jwks,
+            required_scope=required_scope,
+            required_permissions=required_permissions,
         )
 
     def userinfo(self, access_token: str) -> FiefUserInfo:
@@ -478,11 +498,18 @@ class FiefAsync(BaseFief):
         return token_response, userinfo
 
     async def validate_access_token(
-        self, access_token: str, *, required_scope: Optional[List[str]] = None
+        self,
+        access_token: str,
+        *,
+        required_scope: Optional[List[str]] = None,
+        required_permissions: Optional[List[str]] = None,
     ) -> FiefAccessTokenInfo:
         jwks = await self._get_jwks()
         return self._validate_access_token(
-            access_token, jwks, required_scope=required_scope
+            access_token,
+            jwks,
+            required_scope=required_scope,
+            required_permissions=required_permissions,
         )
 
     async def userinfo(self, access_token: str) -> FiefUserInfo:

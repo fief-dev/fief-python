@@ -58,6 +58,11 @@ def flask_app(fief_client: Fief) -> Generator[Flask, None, None]:
     def get_authenticated_scope():
         return g.access_token_info
 
+    @app.get("/authenticated-permission")
+    @auth.authenticated(permissions=["castles:create"])
+    def get_authenticated_permission():
+        return g.access_token_info
+
     @app.get("/current-user")
     @auth.current_user()
     def get_current_user():
@@ -71,6 +76,11 @@ def flask_app(fief_client: Fief) -> Generator[Flask, None, None]:
     @app.get("/current-user-scope")
     @auth.current_user(scope=["required_scope"])
     def get_current_user_scope():
+        return g.user
+
+    @app.get("/current-user-permission")
+    @auth.current_user(permissions=["castles:create"])
+    def get_current_user_permission():
         return g.user
 
     yield app
@@ -92,8 +102,8 @@ class TestAuthenticated:
 
         assert response.status_code == 401
 
-    def test_expired_token(self, test_client: FlaskClient, generate_token):
-        access_token = generate_token(encrypt=False, exp=0)
+    def test_expired_token(self, test_client: FlaskClient, generate_access_token):
+        access_token = generate_access_token(encrypt=False, exp=0)
 
         response = test_client.get(
             "/authenticated", headers={"Authorization": f"Bearer {access_token}"}
@@ -101,8 +111,10 @@ class TestAuthenticated:
 
         assert response.status_code == 401
 
-    def test_valid_token(self, test_client: FlaskClient, generate_token, user_id: str):
-        access_token = generate_token(encrypt=False, scope="openid")
+    def test_valid_token(
+        self, test_client: FlaskClient, generate_access_token, user_id: str
+    ):
+        access_token = generate_access_token(encrypt=False, scope="openid")
 
         response = test_client.get(
             "/authenticated", headers={"Authorization": f"Bearer {access_token}"}
@@ -114,11 +126,12 @@ class TestAuthenticated:
         assert json == {
             "id": user_id,
             "scope": ["openid"],
+            "permissions": [],
             "access_token": access_token,
         }
 
-    def test_missing_scope(self, test_client: FlaskClient, generate_token):
-        access_token = generate_token(encrypt=False, scope="openid")
+    def test_missing_scope(self, test_client: FlaskClient, generate_access_token):
+        access_token = generate_access_token(encrypt=False, scope="openid")
 
         response = test_client.get(
             "/authenticated-scope", headers={"Authorization": f"Bearer {access_token}"}
@@ -126,8 +139,12 @@ class TestAuthenticated:
 
         assert response.status_code == 403
 
-    def test_valid_scope(self, test_client: FlaskClient, generate_token, user_id: str):
-        access_token = generate_token(encrypt=False, scope="openid required_scope")
+    def test_valid_scope(
+        self, test_client: FlaskClient, generate_access_token, user_id: str
+    ):
+        access_token = generate_access_token(
+            encrypt=False, scope="openid required_scope"
+        )
 
         response = test_client.get(
             "/authenticated-scope", headers={"Authorization": f"Bearer {access_token}"}
@@ -139,6 +156,41 @@ class TestAuthenticated:
         assert json == {
             "id": user_id,
             "scope": ["openid", "required_scope"],
+            "permissions": [],
+            "access_token": access_token,
+        }
+
+    def test_missing_permission(self, test_client: FlaskClient, generate_access_token):
+        access_token = generate_access_token(
+            encrypt=False, permissions=["castles:read"]
+        )
+
+        response = test_client.get(
+            "/authenticated-permission",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == 403
+
+    def test_valid_permission(
+        self, test_client: FlaskClient, generate_access_token, user_id: str
+    ):
+        access_token = generate_access_token(
+            encrypt=False, permissions=["castles:read", "castles:create"]
+        )
+
+        response = test_client.get(
+            "/authenticated-permission",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == 200
+
+        json = response.json
+        assert json == {
+            "id": user_id,
+            "scope": [],
+            "permissions": ["castles:read", "castles:create"],
             "access_token": access_token,
         }
 
@@ -154,8 +206,8 @@ class TestCurrentUser:
 
         assert response.status_code == 401
 
-    def test_expired_token(self, test_client: FlaskClient, generate_token):
-        access_token = generate_token(encrypt=False, exp=0)
+    def test_expired_token(self, test_client: FlaskClient, generate_access_token):
+        access_token = generate_access_token(encrypt=False, exp=0)
 
         response = test_client.get(
             "/current-user", headers={"Authorization": f"Bearer {access_token}"}
@@ -166,7 +218,7 @@ class TestCurrentUser:
     def test_valid_token(
         self,
         test_client: FlaskClient,
-        generate_token,
+        generate_access_token,
         mock_api_requests: respx.MockRouter,
         user_id: str,
     ):
@@ -175,7 +227,7 @@ class TestCurrentUser:
             200, json={"sub": user_id}
         )
 
-        access_token = generate_token(encrypt=False, scope="openid")
+        access_token = generate_access_token(encrypt=False, scope="openid")
 
         response = test_client.get(
             "/current-user", headers={"Authorization": f"Bearer {access_token}"}
@@ -198,8 +250,8 @@ class TestCurrentUser:
 
         assert mock_api_requests.get("/userinfo").call_count == 1
 
-    def test_missing_scope(self, test_client: FlaskClient, generate_token):
-        access_token = generate_token(encrypt=False, scope="openid")
+    def test_missing_scope(self, test_client: FlaskClient, generate_access_token):
+        access_token = generate_access_token(encrypt=False, scope="openid")
 
         response = test_client.get(
             "/current-user-scope", headers={"Authorization": f"Bearer {access_token}"}
@@ -210,7 +262,7 @@ class TestCurrentUser:
     def test_valid_scope(
         self,
         test_client: FlaskClient,
-        generate_token,
+        generate_access_token,
         mock_api_requests: respx.MockRouter,
         user_id: str,
     ):
@@ -218,7 +270,9 @@ class TestCurrentUser:
             200, json={"sub": user_id}
         )
 
-        access_token = generate_token(encrypt=False, scope="openid required_scope")
+        access_token = generate_access_token(
+            encrypt=False, scope="openid required_scope"
+        )
 
         response = test_client.get(
             "/current-user-scope", headers={"Authorization": f"Bearer {access_token}"}
@@ -229,10 +283,47 @@ class TestCurrentUser:
         json = response.json
         assert json == {"sub": user_id}
 
+    def test_missing_permission(self, test_client: FlaskClient, generate_access_token):
+        access_token = generate_access_token(
+            encrypt=False, permissions=["castles:read"]
+        )
+
+        response = test_client.get(
+            "/current-user-permission",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == 403
+
+    def test_valid_permission(
+        self,
+        test_client: FlaskClient,
+        generate_access_token,
+        mock_api_requests: respx.MockRouter,
+        user_id: str,
+    ):
+        mock_api_requests.get("/userinfo").return_value = Response(
+            200, json={"sub": user_id}
+        )
+
+        access_token = generate_access_token(
+            encrypt=False, permissions=["castles:read", "castles:create"]
+        )
+
+        response = test_client.get(
+            "/current-user-permission",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == 200
+
+        json = response.json
+        assert json == {"sub": user_id}
+
     def test_valid_refresh(
         self,
         test_client: FlaskClient,
-        generate_token,
+        generate_access_token,
         mock_api_requests: respx.MockRouter,
         user_id: str,
     ):
@@ -241,7 +332,7 @@ class TestCurrentUser:
             200, json={"sub": user_id}
         )
 
-        access_token = generate_token(encrypt=False, scope="openid")
+        access_token = generate_access_token(encrypt=False, scope="openid")
 
         response = test_client.get(
             "/current-user-refresh", headers={"Authorization": f"Bearer {access_token}"}

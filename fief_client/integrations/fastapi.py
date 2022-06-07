@@ -28,6 +28,7 @@ from fief_client import (
     FiefAccessTokenExpired,
     FiefAccessTokenInfo,
     FiefAccessTokenInvalid,
+    FiefAccessTokenMissingPermission,
     FiefAccessTokenMissingScope,
     FiefAsync,
     FiefUserInfo,
@@ -70,7 +71,9 @@ class FiefAuth:
         self.scheme = scheme
         self.get_userinfo_cache = get_userinfo_cache
 
-    def authenticated(self, scope: Optional[List[str]] = None):
+    def authenticated(
+        self, scope: Optional[List[str]] = None, permissions: Optional[List[str]] = None
+    ):
         signature = self._get_authenticated_call_signature(self.scheme)
 
         @with_signature(signature)
@@ -84,22 +87,31 @@ class FiefAuth:
                 token = token.credentials
 
             try:
-                result = self.client.validate_access_token(token, required_scope=scope)
+                result = self.client.validate_access_token(
+                    token, required_scope=scope, required_permissions=permissions
+                )
                 if isawaitable(result):
                     info = await result
                 else:
                     info = result
             except (FiefAccessTokenInvalid, FiefAccessTokenExpired):
                 return await self.get_unauthorized_response(request, response)
-            except FiefAccessTokenMissingScope:
+            except (FiefAccessTokenMissingScope, FiefAccessTokenMissingPermission):
                 return await self.get_forbidden_response(request, response)
 
             return info
 
         return _authenticated
 
-    def current_user(self, scope: Optional[List[str]] = None, refresh: bool = False):
-        signature = self._get_current_user_call_signature(self.authenticated(scope))
+    def current_user(
+        self,
+        scope: Optional[List[str]] = None,
+        permissions: Optional[List[str]] = None,
+        refresh: bool = False,
+    ):
+        signature = self._get_current_user_call_signature(
+            self.authenticated(scope, permissions)
+        )
 
         @with_signature(signature)
         async def _current_user(

@@ -1,13 +1,14 @@
 import uuid
 from datetime import datetime, timezone
 from os import path
-from typing import Callable, Generator
+from typing import Callable, Generator, List
 
 import pytest
 import pytest_asyncio
 import respx
 from httpx import Response
 from jwcrypto import jwk, jwt
+from pyparsing import Optional
 
 
 @pytest.fixture(scope="session")
@@ -65,8 +66,20 @@ def generate_token(signature_key: jwk.JWK, encryption_key: jwk.JWK, user_id: str
 
 
 @pytest.fixture(scope="session")
-def access_token(generate_token: Callable[..., str]) -> str:
-    return generate_token(encrypt=False)
+def generate_access_token(generate_token: Callable[..., str]):
+    def _generate_access_token(
+        encrypt: bool, *, scope: str = "", permissions: List[str] = [], **kwargs
+    ) -> str:
+        return generate_token(
+            encrypt=encrypt, scope=scope, permissions=permissions, **kwargs
+        )
+
+    return _generate_access_token
+
+
+@pytest.fixture(scope="session")
+def access_token(generate_access_token: Callable[..., str]) -> str:
+    return generate_access_token(encrypt=False)
 
 
 @pytest.fixture(scope="session")

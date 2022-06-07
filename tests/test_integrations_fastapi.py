@@ -66,6 +66,14 @@ def fastapi_app(fief_client: FiefClientClass, scheme: SecurityBase) -> FastAPI:
     ):
         return access_token_info
 
+    @app.get("/authenticated-permission")
+    async def get_authenticated_permission(
+        access_token_info: FiefAccessTokenInfo = Depends(
+            auth.authenticated(permissions=["castles:create"])
+        ),
+    ):
+        return access_token_info
+
     @app.get("/current-user")
     async def get_current_user(
         current_user: FiefAccessTokenInfo = Depends(auth.current_user()),
@@ -82,6 +90,14 @@ def fastapi_app(fief_client: FiefClientClass, scheme: SecurityBase) -> FastAPI:
     async def get_current_user_scope(
         current_user: FiefAccessTokenInfo = Depends(
             auth.current_user(scope=["required_scope"])
+        ),
+    ):
+        return current_user
+
+    @app.get("/current-user-permission")
+    async def get_current_user_permission(
+        current_user: FiefAccessTokenInfo = Depends(
+            auth.current_user(permissions=["castles:create"])
         ),
     ):
         return current_user
@@ -114,8 +130,10 @@ class TestAuthenticated:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    async def test_expired_token(self, test_client: httpx.AsyncClient, generate_token):
-        access_token = generate_token(encrypt=False, exp=0)
+    async def test_expired_token(
+        self, test_client: httpx.AsyncClient, generate_access_token
+    ):
+        access_token = generate_access_token(encrypt=False, exp=0)
 
         response = await test_client.get(
             "/authenticated", headers={"Authorization": f"Bearer {access_token}"}
@@ -124,9 +142,9 @@ class TestAuthenticated:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     async def test_valid_token(
-        self, test_client: httpx.AsyncClient, generate_token, user_id: str
+        self, test_client: httpx.AsyncClient, generate_access_token, user_id: str
     ):
-        access_token = generate_token(encrypt=False, scope="openid")
+        access_token = generate_access_token(encrypt=False, scope="openid")
 
         response = await test_client.get(
             "/authenticated", headers={"Authorization": f"Bearer {access_token}"}
@@ -138,11 +156,14 @@ class TestAuthenticated:
         assert json == {
             "id": user_id,
             "scope": ["openid"],
+            "permissions": [],
             "access_token": access_token,
         }
 
-    async def test_missing_scope(self, test_client: httpx.AsyncClient, generate_token):
-        access_token = generate_token(encrypt=False, scope="openid")
+    async def test_missing_scope(
+        self, test_client: httpx.AsyncClient, generate_access_token
+    ):
+        access_token = generate_access_token(encrypt=False, scope="openid")
 
         response = await test_client.get(
             "/authenticated-scope", headers={"Authorization": f"Bearer {access_token}"}
@@ -151,9 +172,11 @@ class TestAuthenticated:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     async def test_valid_scope(
-        self, test_client: httpx.AsyncClient, generate_token, user_id: str
+        self, test_client: httpx.AsyncClient, generate_access_token, user_id: str
     ):
-        access_token = generate_token(encrypt=False, scope="openid required_scope")
+        access_token = generate_access_token(
+            encrypt=False, scope="openid required_scope"
+        )
 
         response = await test_client.get(
             "/authenticated-scope", headers={"Authorization": f"Bearer {access_token}"}
@@ -165,6 +188,43 @@ class TestAuthenticated:
         assert json == {
             "id": user_id,
             "scope": ["openid", "required_scope"],
+            "permissions": [],
+            "access_token": access_token,
+        }
+
+    async def test_missing_permission(
+        self, test_client: httpx.AsyncClient, generate_access_token
+    ):
+        access_token = generate_access_token(
+            encrypt=False, permissions=["castles:read"]
+        )
+
+        response = await test_client.get(
+            "/authenticated-permission",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    async def test_valid_permission(
+        self, test_client: httpx.AsyncClient, generate_access_token, user_id: str
+    ):
+        access_token = generate_access_token(
+            encrypt=False, permissions=["castles:read", "castles:create"]
+        )
+
+        response = await test_client.get(
+            "/authenticated-permission",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        json = response.json()
+        assert json == {
+            "id": user_id,
+            "scope": [],
+            "permissions": ["castles:read", "castles:create"],
             "access_token": access_token,
         }
 
@@ -176,8 +236,10 @@ class TestCurrentUser:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    async def test_expired_token(self, test_client: httpx.AsyncClient, generate_token):
-        access_token = generate_token(encrypt=False, exp=0)
+    async def test_expired_token(
+        self, test_client: httpx.AsyncClient, generate_access_token
+    ):
+        access_token = generate_access_token(encrypt=False, exp=0)
 
         response = await test_client.get(
             "/current-user", headers={"Authorization": f"Bearer {access_token}"}
@@ -188,7 +250,7 @@ class TestCurrentUser:
     async def test_valid_token(
         self,
         test_client: httpx.AsyncClient,
-        generate_token,
+        generate_access_token,
         mock_api_requests: respx.MockRouter,
         user_id: str,
     ):
@@ -197,7 +259,7 @@ class TestCurrentUser:
             200, json={"sub": user_id}
         )
 
-        access_token = generate_token(encrypt=False, scope="openid")
+        access_token = generate_access_token(encrypt=False, scope="openid")
 
         response = await test_client.get(
             "/current-user", headers={"Authorization": f"Bearer {access_token}"}
@@ -220,8 +282,10 @@ class TestCurrentUser:
 
         assert mock_api_requests.get("/userinfo").call_count == 1
 
-    async def test_missing_scope(self, test_client: httpx.AsyncClient, generate_token):
-        access_token = generate_token(encrypt=False, scope="openid")
+    async def test_missing_scope(
+        self, test_client: httpx.AsyncClient, generate_access_token
+    ):
+        access_token = generate_access_token(encrypt=False, scope="openid")
 
         response = await test_client.get(
             "/current-user-scope", headers={"Authorization": f"Bearer {access_token}"}
@@ -232,7 +296,7 @@ class TestCurrentUser:
     async def test_valid_scope(
         self,
         test_client: httpx.AsyncClient,
-        generate_token,
+        generate_access_token,
         mock_api_requests: respx.MockRouter,
         user_id: str,
     ):
@@ -240,7 +304,9 @@ class TestCurrentUser:
             200, json={"sub": user_id}
         )
 
-        access_token = generate_token(encrypt=False, scope="openid required_scope")
+        access_token = generate_access_token(
+            encrypt=False, scope="openid required_scope"
+        )
 
         response = await test_client.get(
             "/current-user-scope", headers={"Authorization": f"Bearer {access_token}"}
@@ -251,10 +317,41 @@ class TestCurrentUser:
         json = response.json()
         assert json == {"sub": user_id}
 
+    async def test_missing_permission(
+        self, test_client: httpx.AsyncClient, generate_access_token
+    ):
+        access_token = generate_access_token(
+            encrypt=False, permissions=["castles:read"]
+        )
+
+        response = await test_client.get(
+            "/current-user-permission",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    async def test_valid_permission(
+        self, test_client: httpx.AsyncClient, generate_access_token, user_id: str
+    ):
+        access_token = generate_access_token(
+            encrypt=False, permissions=["castles:read", "castles:create"]
+        )
+
+        response = await test_client.get(
+            "/current-user-permission",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        json = response.json()
+        assert json == {"sub": user_id}
+
     async def test_valid_refresh(
         self,
         test_client: httpx.AsyncClient,
-        generate_token,
+        generate_access_token,
         mock_api_requests: respx.MockRouter,
         user_id: str,
     ):
@@ -263,7 +360,7 @@ class TestCurrentUser:
             200, json={"sub": user_id}
         )
 
-        access_token = generate_token(encrypt=False, scope="openid")
+        access_token = generate_access_token(encrypt=False, scope="openid")
 
         response = await test_client.get(
             "/current-user-refresh", headers={"Authorization": f"Bearer {access_token}"}
