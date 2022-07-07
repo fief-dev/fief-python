@@ -363,7 +363,7 @@ class Fief(BaseFief):
             return response.json()
 
     def update_profile(self, access_token: str, data: Dict[str, Any]) -> FiefUserInfo:
-        update_profile_endpoint = f"{self.base_url}/profile"
+        update_profile_endpoint = f"{self.base_url}/api/profile"
 
         with self._get_httpx_client() as client:
             request = self._get_update_profile_request(
@@ -529,7 +529,7 @@ class FiefAsync(BaseFief):
     async def update_profile(
         self, access_token: str, data: Dict[str, Any]
     ) -> FiefUserInfo:
-        update_profile_endpoint = f"{self.base_url}/profile"
+        update_profile_endpoint = f"{self.base_url}/api/profile"
 
         async with self._get_httpx_client() as client:
             request = self._get_update_profile_request(

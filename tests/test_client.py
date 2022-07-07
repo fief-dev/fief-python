@@ -462,7 +462,7 @@ class TestUpdateProfile:
     def test_valid_response(
         self, fief_client: Fief, mock_api_requests: respx.MockRouter, user_id: str
     ):
-        mock_api_requests.patch("/profile").return_value = Response(
+        mock_api_requests.patch("/api/profile").return_value = Response(
             200, json={"sub": user_id}
         )
 
@@ -478,7 +478,7 @@ class TestUpdateProfile:
         mock_api_requests: respx.MockRouter,
         user_id: str,
     ):
-        mock_api_requests.patch("/profile").return_value = Response(
+        mock_api_requests.patch("/api/profile").return_value = Response(
             200, json={"sub": user_id}
         )
 
