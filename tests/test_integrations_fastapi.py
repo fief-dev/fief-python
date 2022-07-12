@@ -23,7 +23,7 @@ def fief_client(request) -> FiefClientClass:
 
 schemes: List[SecurityBase] = [
     HTTPBearer(auto_error=False),
-    OAuth2PasswordBearer("/token"),
+    OAuth2PasswordBearer("/token", auto_error=False),
 ]
 
 
@@ -58,6 +58,14 @@ def fastapi_app(fief_client: FiefClientClass, scheme: SecurityBase) -> FastAPI:
     ):
         return access_token_info
 
+    @app.get("/authenticated-optional")
+    async def get_authenticated_optional(
+        access_token_info: Optional[FiefAccessTokenInfo] = Depends(
+            auth.authenticated(optional=True)
+        ),
+    ):
+        return access_token_info
+
     @app.get("/authenticated-scope")
     async def get_authenticated_scope(
         access_token_info: FiefAccessTokenInfo = Depends(
@@ -80,15 +88,23 @@ def fastapi_app(fief_client: FiefClientClass, scheme: SecurityBase) -> FastAPI:
     ):
         return current_user
 
+    @app.get("/current-user-optional")
+    async def get_current_user_optional(
+        current_user: Optional[FiefUserInfo] = Depends(
+            auth.current_user(optional=True)
+        ),
+    ):
+        return current_user
+
     @app.get("/current-user-refresh")
     async def get_current_user_refresh(
-        current_user: FiefAccessTokenInfo = Depends(auth.current_user(refresh=True)),
+        current_user: FiefUserInfo = Depends(auth.current_user(refresh=True)),
     ):
         return current_user
 
     @app.get("/current-user-scope")
     async def get_current_user_scope(
-        current_user: FiefAccessTokenInfo = Depends(
+        current_user: FiefUserInfo = Depends(
             auth.current_user(scope=["required_scope"])
         ),
     ):
@@ -96,7 +112,7 @@ def fastapi_app(fief_client: FiefClientClass, scheme: SecurityBase) -> FastAPI:
 
     @app.get("/current-user-permission")
     async def get_current_user_permission(
-        current_user: FiefAccessTokenInfo = Depends(
+        current_user: FiefUserInfo = Depends(
             auth.current_user(permissions=["castles:create"])
         ),
     ):
@@ -154,6 +170,29 @@ class TestAuthenticated:
 
         json = response.json()
         assert json == {
+            "id": user_id,
+            "scope": ["openid"],
+            "permissions": [],
+            "access_token": access_token,
+        }
+
+    async def test_optional(
+        self, test_client: httpx.AsyncClient, generate_access_token, user_id: str
+    ):
+        response = await test_client.get("/authenticated-optional")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() is None
+
+        access_token = generate_access_token(encrypt=False, scope="openid")
+
+        response = await test_client.get(
+            "/authenticated-optional",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == {
             "id": user_id,
             "scope": ["openid"],
             "permissions": [],
@@ -281,6 +320,33 @@ class TestCurrentUser:
         assert json == {"sub": user_id}
 
         assert mock_api_requests.get("/userinfo").call_count == 1
+
+    async def test_optional(
+        self,
+        test_client: httpx.AsyncClient,
+        generate_access_token,
+        mock_api_requests: respx.MockRouter,
+        user_id: str,
+    ):
+        mock_api_requests.get("/userinfo").reset()
+        mock_api_requests.get("/userinfo").return_value = Response(
+            200, json={"sub": user_id}
+        )
+
+        response = await test_client.get("/current-user-optional")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() is None
+
+        access_token = generate_access_token(encrypt=False, scope="openid")
+
+        response = await test_client.get(
+            "/current-user-optional",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == {"sub": user_id}
 
     async def test_missing_scope(
         self, test_client: httpx.AsyncClient, generate_access_token

@@ -72,15 +72,20 @@ class FiefAuth:
         self.get_userinfo_cache = get_userinfo_cache
 
     def authenticated(
-        self, scope: Optional[List[str]] = None, permissions: Optional[List[str]] = None
+        self,
+        optional: bool = False,
+        scope: Optional[List[str]] = None,
+        permissions: Optional[List[str]] = None,
     ):
         signature = self._get_authenticated_call_signature(self.scheme)
 
         @with_signature(signature)
         async def _authenticated(
             request: Request, response: Response, token: Optional[TokenType]
-        ) -> FiefAccessTokenInfo:
+        ) -> Optional[FiefAccessTokenInfo]:
             if token is None:
+                if optional:
+                    return None
                 return await self.get_unauthorized_response(request, response)
 
             if isinstance(token, HTTPAuthorizationCredentials):
@@ -105,21 +110,26 @@ class FiefAuth:
 
     def current_user(
         self,
+        optional: bool = False,
         scope: Optional[List[str]] = None,
         permissions: Optional[List[str]] = None,
         refresh: bool = False,
     ):
         signature = self._get_current_user_call_signature(
-            self.authenticated(scope, permissions)
+            self.authenticated(optional, scope, permissions)
         )
 
         @with_signature(signature)
         async def _current_user(
-            access_token_info: FiefAccessTokenInfo, *args, **kwargs
-        ) -> FiefUserInfo:
+            access_token_info: Optional[FiefAccessTokenInfo], *args, **kwargs
+        ) -> Optional[FiefUserInfo]:
             userinfo_cache: Optional[UserInfoCacheProtocol] = kwargs.get(
                 "userinfo_cache"
             )
+
+            if access_token_info is None and optional:
+                return None
+            assert access_token_info is not None
 
             userinfo = None
             if userinfo_cache is not None:

@@ -53,6 +53,11 @@ def flask_app(fief_client: Fief) -> Generator[Flask, None, None]:
     def get_authenticated():
         return g.access_token_info
 
+    @app.get("/authenticated-optional")
+    @auth.authenticated(optional=True)
+    def get_authenticated_optional():
+        return g.access_token_info or {}
+
     @app.get("/authenticated-scope")
     @auth.authenticated(scope=["required_scope"])
     def get_authenticated_scope():
@@ -67,6 +72,11 @@ def flask_app(fief_client: Fief) -> Generator[Flask, None, None]:
     @auth.current_user()
     def get_current_user():
         return g.user
+
+    @app.get("/current-user-optional")
+    @auth.current_user(optional=True)
+    def get_current_user_optional():
+        return g.user or {}
 
     @app.get("/current-user-refresh")
     @auth.current_user(refresh=True)
@@ -124,6 +134,29 @@ class TestAuthenticated:
 
         json = response.json
         assert json == {
+            "id": user_id,
+            "scope": ["openid"],
+            "permissions": [],
+            "access_token": access_token,
+        }
+
+    def test_optional(
+        self, test_client: FlaskClient, generate_access_token, user_id: str
+    ):
+        response = test_client.get("/authenticated-optional")
+        assert response.status_code == 200
+        assert response.json == {}
+
+        access_token = generate_access_token(encrypt=False, scope="openid")
+
+        response = test_client.get(
+            "/authenticated-optional",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == 200
+
+        assert response.json == {
             "id": user_id,
             "scope": ["openid"],
             "permissions": [],
@@ -249,6 +282,33 @@ class TestCurrentUser:
         assert json == {"sub": user_id}
 
         assert mock_api_requests.get("/userinfo").call_count == 1
+
+    def test_optional(
+        self,
+        test_client: FlaskClient,
+        generate_access_token,
+        mock_api_requests: respx.MockRouter,
+        user_id: str,
+    ):
+        mock_api_requests.get("/userinfo").reset()
+        mock_api_requests.get("/userinfo").return_value = Response(
+            200, json={"sub": user_id}
+        )
+
+        response = test_client.get("/current-user-optional")
+        assert response.status_code == 200
+        assert response.json == {}
+
+        access_token = generate_access_token(encrypt=False, scope="openid")
+
+        response = test_client.get(
+            "/current-user-optional",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == 200
+
+        assert response.json == {"sub": user_id}
 
     def test_missing_scope(self, test_client: FlaskClient, generate_access_token):
         access_token = generate_access_token(encrypt=False, scope="openid")

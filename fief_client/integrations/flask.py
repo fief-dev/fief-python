@@ -69,6 +69,7 @@ class FiefAuth:
     def authenticated(
         self,
         *,
+        optional: bool = False,
         scope: Optional[List[str]] = None,
         permissions: Optional[List[str]] = None,
     ):
@@ -77,6 +78,9 @@ class FiefAuth:
             def decorated_function(*args, **kwargs):
                 token = self.token_getter()
                 if token is None:
+                    if optional:
+                        g.access_token_info = None
+                        return f(*args, **kwargs)
                     raise FiefAuthUnauthorized()
 
                 try:
@@ -102,15 +106,22 @@ class FiefAuth:
     def current_user(
         self,
         *,
+        optional: bool = False,
         scope: Optional[List[str]] = None,
         permissions: Optional[List[str]] = None,
         refresh: bool = False,
     ):
         def _current_user(f):
             @wraps(f)
-            @self.authenticated(scope=scope, permissions=permissions)
+            @self.authenticated(optional=optional, scope=scope, permissions=permissions)
             def decorated_function(*args, **kwargs):
-                access_token_info: FiefAccessTokenInfo = g.access_token_info
+                access_token_info: Optional[FiefAccessTokenInfo] = g.access_token_info
+
+                if access_token_info is None and optional:
+                    g.user = None
+                    return f(*args, **kwargs)
+
+                assert access_token_info is not None
 
                 userinfo = None
                 if self.get_userinfo_cache is not None:
