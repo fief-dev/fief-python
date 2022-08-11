@@ -61,7 +61,7 @@ dev = [
 
 fastapi = [
   "fastapi",
-  "makefun ==1.14.0",
+  "makefun >=1.14.0,<2.0.0",
 ]
 
 flask = [
