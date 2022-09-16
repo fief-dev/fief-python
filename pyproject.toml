@@ -11,12 +11,49 @@ concurrency = ["greenlet"]
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 
-[build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
+[tool.hatch]
 
-[tool.flit.module]
-name = "fief_client"
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.version]
+source = "regex_commit"
+commit_extra_args = ["-e"]
+path = "fief_client/__init__.py"
+
+[tool.hatch.envs.default]
+features = [
+  "fastapi",
+  "flask",
+]
+dependencies = [
+  "black",
+  "coverage[toml]",
+  "greenlet",
+  "isort",
+  "mypy",
+  "pytest",
+  "pytest-cov",
+  "pytest-asyncio",
+  "pytest-mock",
+  "respx",
+  "tryceratops",
+  "uvicorn[standard]",
+]
+
+[tool.hatch.envs.default.scripts]
+test = "pytest --cov fief_client/ --cov-report=term-missing"
+test-cov-xml = "pytest --cov fief_client/ --cov-report=xml"
+lint = [
+  "isort ./fief_client",
+  "isort ./tests",
+  "black . ",
+  "mypy fief_client/",
+]
+
+[build-system]
+requires = ["hatchling", "hatch-regex-commit"]
+build-backend = "hatchling.build"
 
 [project]
 name = "fief-client"
@@ -24,6 +61,7 @@ authors = [
   { name = "François Voron", email = "contact@fief.dev" }
 ]
 description = "Fief Client for Python"
+license = "MIT"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Intended Audience :: Developers",
@@ -42,23 +80,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
-  "black",
-  "bumpversion",
-  "coverage[toml]",
-  "flit",
-  "greenlet",
-  "isort",
-  "mypy",
-  "pytest",
-  "pytest-cov",
-  "pytest-asyncio",
-  "pytest-mock",
-  "respx",
-  "tryceratops",
-  "uvicorn[standard]",
-]
-
 fastapi = [
   "fastapi",
   "makefun >=1.14.0,<2.0.0",
@@ -69,7 +90,5 @@ flask = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/fief-dev/fief-python"
-
-[tool.flit.sdist]
-exclude = ["tests"]
+Documentation = "https://docs.fief.dev/integrate/python/"
+Source = "https://github.com/fief-dev/fief-python"
