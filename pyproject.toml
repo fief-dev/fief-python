@@ -50,6 +50,11 @@ lint = [
   "black . ",
   "mypy fief_client/",
 ]
+lint-check = [
+  "isort --check-only ./fief_client ./tests",
+  "black --check .",
+  "mypy fief_client/",
+]
 
 [build-system]
 requires = ["hatchling", "hatch-regex-commit"]
