@@ -192,7 +192,7 @@ class BaseFief:
                     raise FiefIdTokenInvalid()
 
             return claims
-        except jwt.JWException as e:
+        except (jwt.JWException, TypeError) as e:
             raise FiefIdTokenInvalid() from e
 
     def _get_openid_configuration_request(self, client: HTTPXClient) -> httpx.Request:
