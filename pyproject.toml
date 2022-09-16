@@ -66,6 +66,7 @@ authors = [
   { name = "François Voron", email = "contact@fief.dev" }
 ]
 description = "Fief Client for Python"
+readme = "README.md"
 license = "MIT"
 classifiers = [
     "License :: OSI Approved :: MIT License",
