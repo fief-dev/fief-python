@@ -20,52 +20,118 @@ HTTPXClient = Union[httpx.Client, httpx.AsyncClient]
 
 
 class FiefTokenResponse(TypedDict):
+    """
+    Typed dictionary containing the tokens and related information returned by Fief after a successful authentication.
+    """
+
     access_token: str
+    """Access token you can use to call the Fief API."""
     id_token: str
+    """ID token containing user information."""
     token_type: str
+    """Type of token, usually `bearer`."""
     expires_in: int
+    """Number of seconds after which the tokens will expire."""
     refresh_token: Optional[str]
+    """Token provided only if scope `offline_access` was granted. Allows you to retrieve fresh tokens using the `Fief.auth_refresh_token` method."""
 
 
 class FiefAccessTokenInfo(TypedDict):
+    """
+    Typed dictionary containing information about the access token.
+
+    **Example:**
+
+    ```json
+    {
+        "id": "aeeb8bfa-e8f4-4724-9427-c3d5af66190e",
+        "scope": ["openid", "required_scope"],
+        "permissions": ["castles:read", "castles:create", "castles:update", "castles:delete"],
+        "access_token": "ACCESS_TOKEN",
+    }
+    ```
+    """
+
     id: uuid.UUID
+    """ID of the user."""
     scope: List[str]
+    """List of granted scopes for this access token."""
     permissions: List[str]
+    """List of [granted permissions](https://docs.fief.dev/getting-started/access-control/) for this user."""
     access_token: str
+    """Access token you can use to call the Fief API."""
 
 
-FiefUserInfo = Dict[str, Any]
+class FiefUserInfo(dict):
+    """
+    Dictionary containing user information.
+
+    [User fields](https://docs.fief.dev/getting-started/user-fields/) values for this user are also present, indexed by their slug.
+
+    **Example:**
+
+    ```json
+    {
+        "sub": "aeeb8bfa-e8f4-4724-9427-c3d5af66190e",
+        "email": "anne@bretagne.duchy",
+        "tenant_id": "c91ecb7f-359c-4244-8385-51ecd6c0d06b",
+        "first_name": "Anne",
+        "last_name": "De Bretagne",
+    }
+    ```
+    """
+
+    sub: str
+    """
+    ID of the user.
+    """
+    email: str
+    """
+    Email address of the user.
+    """
+    tenant_id: str
+    """
+    ID of the [tenant](https://docs.fief.dev/getting-started/tenants/) associated to the user.
+    """
 
 
 class FiefError(Exception):
-    pass
+    """Base Fief client error."""
 
 
 class FiefAccessTokenInvalid(FiefError):
-    pass
+    """The access token is invalid."""
 
 
 class FiefAccessTokenExpired(FiefError):
-    pass
+    """The access token is expired."""
 
 
 class FiefAccessTokenMissingScope(FiefError):
-    pass
+    """The access token is missing a required scope."""
 
 
 class FiefAccessTokenMissingPermission(FiefError):
-    pass
+    """The access token is missing a required permission."""
 
 
 class FiefIdTokenInvalid(FiefError):
-    pass
+    """The ID token is invalid."""
 
 
 class BaseFief:
+    """
+    Base Fief authentication client.
+    """
+
     base_url: str
+    """Base URL of your Fief tenant."""
     client_id: str
+    """ID of your Fief client."""
     client_secret: str
+    """Secret of your Fief client."""
     encryption_key: Optional[jwk.JWK] = None
+    """"""
 
     _openid_configuration: Optional[Dict[str, Any]] = None
     _jwks: Optional[jwk.JWKSet] = None
@@ -79,6 +145,15 @@ class BaseFief:
         encryption_key: Optional[str] = None,
         host: Optional[str] = None,
     ) -> None:
+        """
+        Initialize the client.
+
+        :param base_url: Base URL of your Fief tenant.
+        :param client_id: ID of your Fief client.
+        :param client_secret: Secret of your Fief client.
+        :param encryption_key: Encryption key of your Fief client.
+        Necessary only if [ID Token encryption](https://docs.fief.dev/going-further/id-token-encryption/) is enabled.
+        """
         self.base_url = base_url
         self.client_id = client_id
         self.client_secret = client_secret
@@ -271,6 +346,21 @@ class BaseFief:
 
 
 class Fief(BaseFief):
+    """Sync Fief authentication client."""
+
+    def __init__(
+        self,
+        base_url: str,
+        client_id: str,
+        client_secret: str,
+        *,
+        encryption_key: Optional[str] = None,
+        host: Optional[str] = None,
+    ) -> None:
+        super().__init__(
+            base_url, client_id, client_secret, encryption_key=encryption_key, host=host
+        )
+
     def auth_url(
         self,
         redirect_uri: str,
@@ -281,6 +371,23 @@ class Fief(BaseFief):
         code_challenge_method: Optional[str] = None,
         extras_params: Optional[Mapping[str, str]] = None,
     ) -> str:
+        """
+        Return an authorization URL.
+
+        :param redirect_uri: Your callback URI where the user will be redirected after Fief authentication.
+        :param state: Optional string that will be returned back in the callback parameters to allow you to retrieve state information.
+        :param scope: Optional list of scopes to ask for.
+        :param code_challenge: Optional code challenge for
+        [PKCE process](https://docs.fief.dev/going-further/pkce/).
+        :param code_challenge_method: Method used to hash the PKCE code challenge.
+        :param extras_params: Optional dictionary containing specific parameters.
+
+        **Example:**
+
+        ```py
+        auth_url = fief.auth_url("http://localhost:8000/callback", scope=["openid"])
+        ```
+        """
         openid_configuration = self._get_openid_configuration()
         return self._auth_url(
             openid_configuration,
@@ -295,6 +402,20 @@ class Fief(BaseFief):
     def auth_callback(
         self, code: str, redirect_uri: str, *, code_verifier: Optional[str] = None
     ) -> Tuple[FiefTokenResponse, FiefUserInfo]:
+        """
+        Return a `FiefTokenResponse` and `FiefUserInfo` in exchange of an authorization code.
+
+        :param code: The authorization code.
+        :param redirect_uri: The exact same `redirect_uri` you passed to the authorization URL.
+        :param code_verifier:  The raw
+        [PKCE](https://docs.fief.dev/going-further/pkce/) code used to generate the code challenge during authorization.
+
+        **Example:**
+
+        ```py
+        tokens, userinfo = fief.auth_callback("CODE", "http://localhost:8000/callback")
+        ```
+        """
         token_response = self._auth_exchange_token(
             code, redirect_uri, code_verifier=code_verifier
         )
@@ -310,6 +431,20 @@ class Fief(BaseFief):
     def auth_refresh_token(
         self, refresh_token: str, *, scope: Optional[List[str]] = None
     ) -> Tuple[FiefTokenResponse, FiefUserInfo]:
+        """
+        Return fresh `FiefTokenResponse` and `FiefUserInfo` in exchange of a refresh token
+
+        :param refresh_token: A valid refresh token.
+        :param scope: Optional list of scopes to ask for.
+        If not provided, the access token will share the same list of scopes as requested the first time.
+        Otherwise, it should be a subset of the original list of scopes.
+
+        **Example:**
+
+        ```py
+        tokens, userinfo = fief.auth_refresh_token("REFRESH_TOKEN")
+        ```
+        """
         token_endpoint = self._get_endpoint_url(
             self._get_openid_configuration(), "token_endpoint"
         )
@@ -340,6 +475,45 @@ class Fief(BaseFief):
         required_scope: Optional[List[str]] = None,
         required_permissions: Optional[List[str]] = None,
     ) -> FiefAccessTokenInfo:
+        """
+        Check if an access token is valid and optionally that it has a required list of scopes,
+        or a required list of [permissions](https://docs.fief.dev/getting-started/access-control/).
+        Returns a `FiefAccessTokenInfo`.
+
+        :param access_token: The access token to validate.
+        :param required_scope: Optional list of scopes to check for.
+        :param required_permissions: Optional list of permissions to check for.
+
+        **Example: Validate access token with required scopes**
+
+        ```py
+        try:
+            access_token_info = fief.validate_access_token("ACCESS_TOKEN", required_scope=["required_scope"])
+        except FiefAccessTokenInvalid:
+            print("Invalid access token")
+        except FiefAccessTokenExpired:
+            print("Expired access token")
+        except FiefAccessTokenMissingScope:
+            print("Missing required scope")
+
+        print(access_token_info)
+        ```
+
+        **Example: Validate access token with required permissions**
+
+        ```py
+        try:
+            access_token_info = fief.validate_access_token("ACCESS_TOKEN", required_permissions=["castles:create", "castles:read"])
+        except FiefAccessTokenInvalid:
+            print("Invalid access token")
+        except FiefAccessTokenExpired:
+            print("Expired access token")
+        except FiefAccessTokenMissingPermission:
+            print("Missing required permission")
+
+        print(access_token_info)
+        ```
+        """
         jwks = self._get_jwks()
         return self._validate_access_token(
             access_token,
@@ -349,6 +523,17 @@ class Fief(BaseFief):
         )
 
     def userinfo(self, access_token: str) -> FiefUserInfo:
+        """
+        Return fresh `FiefUserInfo` from the Fief API using a valid access token.
+
+        :param access_token: A valid access token.
+
+        **Example:**
+
+        ```py
+        userinfo = fief.userinfo("ACCESS_TOKEN")
+        ```
+        """
         userinfo_endpoint = self._get_endpoint_url(
             self._get_openid_configuration(), "userinfo_endpoint"
         )
@@ -363,6 +548,32 @@ class Fief(BaseFief):
             return response.json()
 
     def update_profile(self, access_token: str, data: Dict[str, Any]) -> FiefUserInfo:
+        """
+        Update user information with the Fief API using a valid access token.
+
+        :param access_token: A valid access token.
+        :param data: A dictionary containing the data to update.
+
+        **Example: Update email address**
+
+        ```py
+        userinfo = fief.update_profile("ACCESS_TOKEN", { "email": "anne@nantes.city" })
+        ```
+
+        **Example: Update password**
+
+        ```py
+        userinfo = fief.update_profile("ACCESS_TOKEN", { "password": "hermine1" })
+        ```
+
+        **Example: Update user field**
+
+        To update [user field](https://docs.fief.dev/getting-started/user-fields/) values, you need to nest them into a `fields` dictionary, indexed by their slug.
+
+        ```py
+        userinfo = fief.update_profile("ACCESS_TOKEN", { "fields": { "first_name": "Anne" } })
+        ```
+        """
         update_profile_endpoint = f"{self.base_url}/api/profile"
 
         with self._get_httpx_client() as client:
@@ -379,6 +590,19 @@ class Fief(BaseFief):
             return response.json()
 
     def logout_url(self, redirect_uri: str) -> str:
+        """
+        Returns a logout URL. If you redirect the user to this page, Fief will clear the session stored on its side.
+
+        **You're still responsible for clearing your own session mechanism if any.**
+
+        :param redirect_uri: A valid URL where the user will be redirected after the logout process:
+
+        **Example:**
+
+        ```py
+        logout_url = fief.logout_url("http://localhost:8000")
+        ```
+        """
         params = {"redirect_uri": redirect_uri}
         return f"{self.base_url}/logout?{urlencode(params)}"
 
@@ -434,6 +658,21 @@ class Fief(BaseFief):
 
 
 class FiefAsync(BaseFief):
+    """Async Fief authentication client."""
+
+    def __init__(
+        self,
+        base_url: str,
+        client_id: str,
+        client_secret: str,
+        *,
+        encryption_key: Optional[str] = None,
+        host: Optional[str] = None,
+    ) -> None:
+        super().__init__(
+            base_url, client_id, client_secret, encryption_key=encryption_key, host=host
+        )
+
     async def auth_url(
         self,
         redirect_uri: str,
@@ -444,6 +683,23 @@ class FiefAsync(BaseFief):
         code_challenge_method: Optional[str] = None,
         extras_params: Optional[Mapping[str, str]] = None,
     ) -> str:
+        """
+        Return an authorization URL.
+
+        :param redirect_uri: Your callback URI where the user will be redirected after Fief authentication.
+        :param state: Optional string that will be returned back in the callback parameters to allow you to retrieve state information.
+        :param scope: Optional list of scopes to ask for.
+        :param code_challenge: Optional code challenge for
+        [PKCE process](https://docs.fief.dev/going-further/pkce/).
+        :param code_challenge_method: Method used to hash the PKCE code challenge.
+        :param extras_params: Optional dictionary containing specific parameters.
+
+        **Example:**
+
+        ```py
+        auth_url = await fief.auth_url("http://localhost:8000/callback", scope=["openid"])
+        ```
+        """
         openid_configuration = await self._get_openid_configuration()
         return self._auth_url(
             openid_configuration,
@@ -458,6 +714,20 @@ class FiefAsync(BaseFief):
     async def auth_callback(
         self, code: str, redirect_uri: str, *, code_verifier: Optional[str] = None
     ) -> Tuple[FiefTokenResponse, FiefUserInfo]:
+        """
+        Return a `FiefTokenResponse` and `FiefUserInfo` in exchange of an authorization code.
+
+        :param code: The authorization code.
+        :param redirect_uri: The exact same `redirect_uri` you passed to the authorization URL.
+        :param code_verifier:  The raw
+        [PKCE](https://docs.fief.dev/going-further/pkce/) code used to generate the code challenge during authorization.
+
+        **Example:**
+
+        ```py
+        tokens, userinfo = await fief.auth_callback("CODE", "http://localhost:8000/callback")
+        ```
+        """
         token_response = await self._auth_exchange_token(
             code, redirect_uri, code_verifier=code_verifier
         )
@@ -473,6 +743,20 @@ class FiefAsync(BaseFief):
     async def auth_refresh_token(
         self, refresh_token: str, *, scope: Optional[List[str]] = None
     ) -> Tuple[FiefTokenResponse, FiefUserInfo]:
+        """
+        Return fresh `FiefTokenResponse` and `FiefUserInfo` in exchange of a refresh token
+
+        :param refresh_token: A valid refresh token.
+        :param scope: Optional list of scopes to ask for.
+        If not provided, the access token will share the same list of scopes as requested the first time.
+        Otherwise, it should be a subset of the original list of scopes.
+
+        **Example:**
+
+        ```py
+        tokens, userinfo = await fief.auth_refresh_token("REFRESH_TOKEN")
+        ```
+        """
         token_endpoint = self._get_endpoint_url(
             await self._get_openid_configuration(), "token_endpoint"
         )
@@ -504,6 +788,45 @@ class FiefAsync(BaseFief):
         required_scope: Optional[List[str]] = None,
         required_permissions: Optional[List[str]] = None,
     ) -> FiefAccessTokenInfo:
+        """
+        Check if an access token is valid and optionally that it has a required list of scopes,
+        or a required list of [permissions](https://docs.fief.dev/getting-started/access-control/).
+        Returns a `FiefAccessTokenInfo`.
+
+        :param access_token: The access token to validate.
+        :param required_scope: Optional list of scopes to check for.
+        :param required_permissions: Optional list of permissions to check for.
+
+        **Example: Validate access token with required scopes**
+
+        ```py
+        try:
+            access_token_info = await fief.validate_access_token("ACCESS_TOKEN", required_scope=["required_scope"])
+        except FiefAccessTokenInvalid:
+            print("Invalid access token")
+        except FiefAccessTokenExpired:
+            print("Expired access token")
+        except FiefAccessTokenMissingScope:
+            print("Missing required scope")
+
+        print(access_token_info)
+        ```
+
+        **Example: Validate access token with required permissions**
+
+        ```py
+        try:
+            access_token_info = await fief.validate_access_token("ACCESS_TOKEN", required_permissions=["castles:create", "castles:read"])
+        except FiefAccessTokenInvalid:
+            print("Invalid access token")
+        except FiefAccessTokenExpired:
+            print("Expired access token")
+        except FiefAccessTokenMissingPermission:
+            print("Missing required permission")
+
+        print(access_token_info)
+        ```
+        """
         jwks = await self._get_jwks()
         return self._validate_access_token(
             access_token,
@@ -513,6 +836,17 @@ class FiefAsync(BaseFief):
         )
 
     async def userinfo(self, access_token: str) -> FiefUserInfo:
+        """
+        Return fresh `FiefUserInfo` from the Fief API using a valid access token.
+
+        :param access_token: A valid access token.
+
+        **Example:**
+
+        ```py
+        userinfo = await fief.userinfo("ACCESS_TOKEN")
+        ```
+        """
         userinfo_endpoint = self._get_endpoint_url(
             await self._get_openid_configuration(), "userinfo_endpoint"
         )
@@ -529,6 +863,32 @@ class FiefAsync(BaseFief):
     async def update_profile(
         self, access_token: str, data: Dict[str, Any]
     ) -> FiefUserInfo:
+        """
+        Update user information with the Fief API using a valid access token.
+
+        :param access_token: A valid access token.
+        :param data: A dictionary containing the data to update.
+
+        **Example: Update email address**
+
+        ```py
+        userinfo = await fief.update_profile("ACCESS_TOKEN", { "email": "anne@nantes.city" })
+        ```
+
+        **Example: Update password**
+
+        ```py
+        userinfo = await fief.update_profile("ACCESS_TOKEN", { "password": "hermine1" })
+        ```
+
+        **Example: Update user field**
+
+        To update [user field](https://docs.fief.dev/getting-started/user-fields/) values, you need to nest them into a `fields` dictionary, indexed by their slug.
+
+        ```py
+        userinfo = await fief.update_profile("ACCESS_TOKEN", { "fields": { "first_name": "Anne" } })
+        ```
+        """
         update_profile_endpoint = f"{self.base_url}/api/profile"
 
         async with self._get_httpx_client() as client:
@@ -545,6 +905,19 @@ class FiefAsync(BaseFief):
             return response.json()
 
     async def logout_url(self, redirect_uri: str) -> str:
+        """
+        Returns a logout URL. If you redirect the user to this page, Fief will clear the session stored on its side.
+
+        **You're still responsible for clearing your own session mechanism if any.**
+
+        :param redirect_uri: A valid URL where the user will be redirected after the logout process:
+
+        **Example:**
+
+        ```py
+        logout_url = await fief.logout_url("http://localhost:8000")
+        ```
+        """
         params = {"redirect_uri": redirect_uri}
         return f"{self.base_url}/logout?{urlencode(params)}"
 

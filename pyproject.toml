@@ -41,6 +41,11 @@ dependencies = [
   "uvicorn[standard]",
 ]
 
+[tool.hatch.envs.docs]
+dependencies = [
+  "pdoc"
+]
+
 [tool.hatch.envs.default.scripts]
 test = "pytest --cov fief_client/ --cov-report=term-missing"
 test-cov-xml = "pytest --cov fief_client/ --cov-report=xml"
@@ -55,6 +60,9 @@ lint-check = [
   "black --check .",
   "mypy fief_client/",
 ]
+
+[tool.hatch.envs.docs.scripts]
+serve = "pdoc fief_client/"
 
 [build-system]
 requires = ["hatchling", "hatch-regex-commit"]

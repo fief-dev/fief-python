@@ -27,4 +27,7 @@ __all__ = [
     "FiefAccessTokenMissingScope",
     "FiefAccessTokenInvalid",
     "FiefIdTokenInvalid",
+    "crypto",
+    "pkce",
+    "integrations",
 ]
