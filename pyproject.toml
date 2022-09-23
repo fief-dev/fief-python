@@ -63,6 +63,7 @@ lint-check = [
 
 [tool.hatch.envs.docs.scripts]
 serve = "pdoc fief_client/"
+build = "pdoc fief_client/ -o docs/_build"
 
 [build-system]
 requires = ["hatchling", "hatch-regex-commit"]
