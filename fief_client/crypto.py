@@ -4,6 +4,11 @@ import secrets
 
 
 def get_validation_hash(value: str) -> str:
+    """
+    Return the validation hash of a value.
+
+    Useful to check the validity `c_hash` and `at_hash` claims.
+    """
     hasher = hashlib.sha256()
     hasher.update(value.encode("utf-8"))
     hash = hasher.digest()
@@ -16,5 +21,10 @@ def get_validation_hash(value: str) -> str:
 
 
 def is_valid_hash(value: str, hash: str) -> bool:
+    """
+    Check if a hash corresponds to the provided value.
+
+    Useful to check the validity `c_hash` and `at_hash` claims.
+    """
     value_hash = get_validation_hash(value)
     return secrets.compare_digest(value_hash, hash)

@@ -1,3 +1,4 @@
+"""Flask integration."""
 import uuid
 from functools import wraps
 from typing import Callable, List, Optional
@@ -16,23 +17,76 @@ from fief_client.client import FiefAccessTokenMissingPermission
 
 
 class FiefAuthError(Exception):
-    pass
+    """
+    Base error for FiefAuth integration.
+    """
 
 
 class FiefAuthUnauthorized(FiefAuthError):
-    pass
+    """
+    Request unauthorized error.
+
+    This error is raised when using the `authenticated` or `current_user` decorator
+    but the request is not authenticated.
+
+    You should implement an `errorhandler` to define the behavior of your server when
+    this happens.
+
+    **Example:**
+
+    ```py
+    @app.errorhandler(FiefAuthUnauthorized)
+    def fief_unauthorized_error(e):
+        return "", 401
+    ```
+    """
 
 
 class FiefAuthForbidden(FiefAuthError):
-    pass
+    """
+    Request forbidden error.
+
+    This error is raised when using the `authenticated` or `current_user` decorator
+    but the access token doesn't match the list of scopes or permissions.
+
+    You should implement an `errorhandler` to define the behavior of your server when
+    this happens.
+
+    **Example:**
+
+    ```py
+    @app.errorhandler(FiefAuthForbidden)
+    def fief_forbidden_error(e):
+        return "", 403
+    ```
+    """
 
 
 TokenGetter = Callable[[], Optional[str]]
+"""Type of a function that can be used to retrieve a token."""
+
 UserInfoCacheGetter = Callable[[uuid.UUID], Optional[FiefUserInfo]]
+"""
+Type of a function that can be used to retrieve user information from a cache.
+
+Read more: https://docs.fief.dev/integrate/python/flask/#web-application-example
+"""
+
 UserInfoCacheSetter = Callable[[uuid.UUID, FiefUserInfo], None]
+"""
+Type of a function that can be used to store user information in a cache.
+
+Read more: https://docs.fief.dev/integrate/python/flask/#web-application-example
+"""
 
 
 def get_authorization_scheme_token(*, scheme: str = "bearer") -> TokenGetter:
+    """
+    Return a `TokenGetter` function to retrieve a token from the `Authorization` header of an HTTP request.
+
+    :param scheme: Scheme of the token. Defaults to `bearer`.
+    """
+
     def _get_authorization_scheme_token():
         authorization = request.headers.get("Authorization")
         if authorization is None:
@@ -46,6 +100,12 @@ def get_authorization_scheme_token(*, scheme: str = "bearer") -> TokenGetter:
 
 
 def get_cookie(cookie_name: str) -> TokenGetter:
+    """
+    Return a `TokenGetter` function to retrieve a token from a `Cookie` of an HTTP request.
+
+    :param cookie_name: Name of the cookie.
+    """
+
     def _get_cookie():
         return request.cookies.get(cookie_name)
 
@@ -53,6 +113,31 @@ def get_cookie(cookie_name: str) -> TokenGetter:
 
 
 class FiefAuth:
+    """
+    Helper class to integrate Fief authentication with Flask.
+
+    **Example:**
+
+    ```py
+    from fief_client import Fief
+    from fief_client.integrations.flask import (
+        FiefAuth,
+        get_authorization_scheme_token,
+    )
+    from flask import Flask, g
+
+    fief = Fief(
+        "https://example.fief.dev",
+        "YOUR_CLIENT_ID",
+        "YOUR_CLIENT_SECRET",
+    )
+
+    auth = FiefAuth(fief, get_authorization_scheme_token())
+
+    app = Flask(__name__)
+    ```
+    """
+
     def __init__(
         self,
         client: Fief,
@@ -61,6 +146,16 @@ class FiefAuth:
         get_userinfo_cache: Optional[UserInfoCacheGetter] = None,
         set_userinfo_cache: Optional[UserInfoCacheSetter] = None,
     ) -> None:
+        """
+        :param client: Instance of a `fief_client.Fief` client.
+        :param token_getter: Function to retrieve a token.
+        It should follow the `TokenGetter` type.
+        :param get_userinfo_cache: Optional function to retrieve user information from a cache.
+        Otherwise, the Fief API will always be reached when requesting user information.
+        It should follow the `UserInfoCacheGetter` type.
+        :param set_userinfo_cache: Optional function to store user information in a cache.
+        It should follow the `UserInfoCacheSetter` type.
+        """
         self.client = client
         self.token_getter = token_getter
         self.get_userinfo_cache = get_userinfo_cache
@@ -73,6 +168,29 @@ class FiefAuth:
         scope: Optional[List[str]] = None,
         permissions: Optional[List[str]] = None,
     ):
+        """
+        Decorator to check if a request is authenticated.
+
+        If the request is authenticated, the `g` object will have an `access_token_info` property,
+        of type `fief_client.FiefAccessTokenInfo`.
+
+        :param optional: If `False` and the request is not authenticated,
+        a `FiefAuthUnauthorized` error will be raised.
+        :param scope: Optional list of scopes required.
+        If the access token lacks one of the required scope, a `FiefAuthForbidden` error will be raised.
+        :param permissions: Optional list of permissions required.
+        If the access token lacks one of the required permission, a `FiefAuthForbidden` error will be raised.
+
+        **Example**
+
+        ```py
+        @app.get("/authenticated")
+        @auth.authenticated()
+        def get_authenticated():
+            return g.access_token_info
+        ```
+        """
+
         def _authenticated(f):
             @wraps(f)
             def decorated_function(*args, **kwargs):
@@ -111,6 +229,32 @@ class FiefAuth:
         permissions: Optional[List[str]] = None,
         refresh: bool = False,
     ):
+        """
+        Decorator to check if a user is authenticated.
+
+        If the request is authenticated, the `g` object will have a `user` property,
+        of type `fief_client.FiefUserInfo`.
+
+        :param optional: If `False` and the request is not authenticated,
+        a `FiefAuthUnauthorized` error will be raised.
+        :param scope: Optional list of scopes required.
+        If the access token lacks one of the required scope, a `FiefAuthForbidden` error will be raised.
+        :param permissions: Optional list of permissions required.
+        If the access token lacks one of the required permission, a `FiefAuthForbidden` error will be raised.
+        :param refresh: If `True`, the user information will be refreshed from the Fief API.
+        Otherwise, the cache will be used.
+
+        **Example**
+
+        ```py
+        @app.get("/current-user")
+        @auth.current_user()
+        def get_current_user():
+            user = g.user
+            return f"<h1>You are authenticated. Your user email is {user['email']}</h1>"
+        ```
+        """
+
         def _current_user(f):
             @wraps(f)
             @self.authenticated(optional=optional, scope=scope, permissions=permissions)
@@ -148,6 +292,8 @@ __all__ = [
     "FiefAuthUnauthorized",
     "FiefAuthForbidden",
     "TokenGetter",
+    "UserInfoCacheGetter",
+    "UserInfoCacheSetter",
     "get_authorization_scheme_token",
     "get_cookie",
 ]

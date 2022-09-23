@@ -24,7 +24,7 @@ def get_code_challenge(code: str, method: Method = "S256") -> str:
     Generate the PKCE code challenge for the given code and method.
 
     :param code: The code to generate the challenge for.
-    :param method: The method to use for generating the challenge. Either "plain" or "S256".
+    :param method: The method to use for generating the challenge. Either `plain` or `S256`.
     """
     if method == "plain":
         return code
