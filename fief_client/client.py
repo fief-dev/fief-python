@@ -595,7 +595,7 @@ class Fief(BaseFief):
 
         **You're still responsible for clearing your own session mechanism if any.**
 
-        :param redirect_uri: A valid URL where the user will be redirected after the logout process:
+        :param redirect_uri: A valid URL where the user will be redirected after the logout process.
 
         **Example:**
 
