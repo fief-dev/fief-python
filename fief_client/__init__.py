@@ -13,7 +13,7 @@ from fief_client.client import (
     FiefUserInfo,
 )
 
-__version__ = "0.14.3"
+__version__ = "0.14.4"
 
 __all__ = [
     "Fief",
