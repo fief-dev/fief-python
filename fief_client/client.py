@@ -62,7 +62,7 @@ class FiefAccessTokenInfo(TypedDict):
     """Access token you can use to call the Fief API."""
 
 
-class FiefUserInfo(dict):
+class FiefUserInfo(TypedDict):
     """
     Dictionary containing user information.
 
