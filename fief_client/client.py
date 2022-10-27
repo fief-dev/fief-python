@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 from urllib.parse import urlencode
 
 import httpx
+from httpx._types import CertTypes, VerifyTypes
 from jwcrypto import jwk, jwt
 
 from fief_client.crypto import is_valid_hash
@@ -140,6 +141,9 @@ class BaseFief:
     _openid_configuration: Optional[Dict[str, Any]] = None
     _jwks: Optional[jwk.JWKSet] = None
 
+    _verify: VerifyTypes
+    _cert: CertTypes
+
     def __init__(
         self,
         base_url: str,
@@ -148,6 +152,8 @@ class BaseFief:
         *,
         encryption_key: Optional[str] = None,
         host: Optional[str] = None,
+        verify: VerifyTypes = True,
+        cert: Optional[CertTypes] = None,
     ) -> None:
         """
         Initialize the client.
@@ -157,6 +163,10 @@ class BaseFief:
         :param client_secret: Secret of your Fief client.
         :param encryption_key: Encryption key of your Fief client.
         Necessary only if [ID Token encryption](https://docs.fief.dev/going-further/id-token-encryption/) is enabled.
+        :param verify: Corresponds to the [verify parameter of HTTPX](https://www.python-httpx.org/advanced/#changing-the-verification-defaults).
+        Useful to customize SSL connection handling.
+        :param cert: Corresponds to the [cert parameter of HTTPX](https://www.python-httpx.org/advanced/#client-side-certificates).
+        Useful to customize SSL connection handling.
         """
         self.base_url = base_url
         self.client_id = client_id
@@ -164,6 +174,8 @@ class BaseFief:
         if encryption_key is not None:
             self.encryption_key = jwk.JWK.from_json(encryption_key)
         self.host = host
+        self.verify = verify
+        self.cert = cert
 
     def _get_endpoint_url(
         self, openid_configuration: Dict[str, Any], field: str
@@ -360,9 +372,17 @@ class Fief(BaseFief):
         *,
         encryption_key: Optional[str] = None,
         host: Optional[str] = None,
+        verify: VerifyTypes = True,
+        cert: Optional[CertTypes] = None,
     ) -> None:
         super().__init__(
-            base_url, client_id, client_secret, encryption_key=encryption_key, host=host
+            base_url,
+            client_id,
+            client_secret,
+            encryption_key=encryption_key,
+            host=host,
+            verify=verify,
+            cert=cert,
         )
 
     def auth_url(
@@ -616,7 +636,9 @@ class Fief(BaseFief):
         if self.host is not None:
             headers["Host"] = self.host
 
-        with httpx.Client(base_url=self.base_url, headers=headers) as client:
+        with httpx.Client(
+            base_url=self.base_url, headers=headers, verify=self.verify, cert=self.cert
+        ) as client:
             yield client
 
     def _get_openid_configuration(self) -> Dict[str, Any]:
@@ -672,9 +694,17 @@ class FiefAsync(BaseFief):
         *,
         encryption_key: Optional[str] = None,
         host: Optional[str] = None,
+        verify: VerifyTypes = True,
+        cert: Optional[CertTypes] = None,
     ) -> None:
         super().__init__(
-            base_url, client_id, client_secret, encryption_key=encryption_key, host=host
+            base_url,
+            client_id,
+            client_secret,
+            encryption_key=encryption_key,
+            host=host,
+            verify=verify,
+            cert=cert,
         )
 
     async def auth_url(
@@ -931,7 +961,9 @@ class FiefAsync(BaseFief):
         if self.host is not None:
             headers["Host"] = self.host
 
-        async with httpx.AsyncClient(base_url=self.base_url, headers=headers) as client:
+        async with httpx.AsyncClient(
+            base_url=self.base_url, headers=headers, verify=self.verify, cert=self.cert
+        ) as client:
             yield client
 
     async def _get_openid_configuration(self) -> Dict[str, Any]:

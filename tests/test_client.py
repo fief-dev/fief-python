@@ -1,11 +1,14 @@
+import contextlib
 import json
 import uuid
 from typing import Dict, List, Mapping, Optional
 
+import httpx
 import pytest
 import respx
 from httpx import Response
 from jwcrypto import jwk
+from pytest_mock import MockerFixture
 
 from fief_client.client import (
     Fief,
@@ -52,6 +55,51 @@ def test_serializable_fief_token_response():
         json.dumps(token_response)
         == '{"access_token": "ACCESS_TOKEN", "id_token": "ID_TOKEN", "token_type": "bearer", "expires_in": 3600, "refresh_token": null}'
     )
+
+
+class TestCustomVerifyCertParameters:
+    def test_sync(self, mocker: MockerFixture):
+        client_mock = mocker.patch.object(httpx, "Client")
+
+        fief = Fief(
+            "https://bretagne.fief.dev",
+            "CLIENT_ID",
+            "CLIENT_SECRET",
+            verify=False,
+            cert="/bretagne.pem",
+        )
+        with fief._get_httpx_client() as _:
+            client_mock.assert_called_with(
+                base_url="https://bretagne.fief.dev",
+                headers={},
+                verify=False,
+                cert="/bretagne.pem",
+            )
+
+    @pytest.mark.asyncio
+    async def test_async(self, mocker: MockerFixture):
+        client_mock = mocker.patch.object(httpx, "AsyncClient")
+
+        @contextlib.asynccontextmanager
+        async def client_context_mock(*args, **kwargs):
+            yield
+
+        client_mock.side_effect = client_context_mock
+
+        fief = FiefAsync(
+            "https://bretagne.fief.dev",
+            "CLIENT_ID",
+            "CLIENT_SECRET",
+            verify=False,
+            cert="/bretagne.pem",
+        )
+        async with fief._get_httpx_client() as _:
+            client_mock.assert_called_with(
+                base_url="https://bretagne.fief.dev",
+                headers={},
+                verify=False,
+                cert="/bretagne.pem",
+            )
 
 
 class TestAuthURL:
