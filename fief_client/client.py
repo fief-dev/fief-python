@@ -962,7 +962,7 @@ class FiefAsync(BaseFief):
             headers["Host"] = self.host
 
         async with httpx.AsyncClient(
-            base_url=self.base_url, headers=headers, verify=self.verify, cert=self.cert
+            base_url=self.base_url, headers=headers, verify=self.verify, cert=self.cert, follow_redirects=True
         ) as client:
             yield client
 
