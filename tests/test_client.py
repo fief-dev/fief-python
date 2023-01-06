@@ -127,7 +127,7 @@ class TestAuthURL:
                 None,
                 "&code_challenge=CODE_CHALLENGE&code_challenge_method=S256",
             ),
-            (None, None, None, None, "fr-FR", None, "?lang=fr-FR"),
+            (None, None, None, None, "fr-FR", None, "&lang=fr-FR"),
         ],
     )
     def test_authorization_url(
@@ -188,7 +188,7 @@ class TestAuthURL:
                 None,
                 "&code_challenge=CODE_CHALLENGE&code_challenge_method=S256",
             ),
-            (None, None, None, None, "fr-FR", None, "?lang=fr-FR"),
+            (None, None, None, None, "fr-FR", None, "&lang=fr-FR"),
         ],
     )
     async def test_authorization_url_async(
