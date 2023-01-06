@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, Generator, Optional
+from typing import Generator, Optional
 
 import pytest
 import respx

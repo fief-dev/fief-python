@@ -5,6 +5,11 @@ profile = "black"
 module = "jwcrypto.*"
 ignore_missing_imports = true
 
+[tool.ruff]
+extend-select = ["I"]
+ignore = ["E501"]
+per-file-ignores = {"tests/test_init.py" = ["F401"]}
+
 [tool.coverage.run]
 concurrency = ["greenlet"]
 
@@ -30,13 +35,13 @@ dependencies = [
   "black",
   "coverage[toml]",
   "greenlet",
-  "isort",
   "mypy",
   "pytest",
   "pytest-cov",
   "pytest-asyncio",
   "pytest-mock",
   "respx",
+  "ruff",
   "tryceratops",
   "uvicorn[standard]",
 ]
@@ -50,14 +55,13 @@ dependencies = [
 test = "pytest --cov fief_client/ --cov-report=term-missing"
 test-cov-xml = "pytest --cov fief_client/ --cov-report=xml"
 lint = [
-  "isort ./fief_client",
-  "isort ./tests",
   "black . ",
+  "ruff --fix .",
   "mypy fief_client/",
 ]
 lint-check = [
-  "isort --check-only ./fief_client ./tests",
   "black --check .",
+  "ruff .",
   "mypy fief_client/",
 ]
 

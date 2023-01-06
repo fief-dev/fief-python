@@ -8,7 +8,6 @@ import pytest_asyncio
 import respx
 from httpx import Response
 from jwcrypto import jwk, jwt
-from pyparsing import Optional
 
 
 @pytest.fixture(scope="session")
