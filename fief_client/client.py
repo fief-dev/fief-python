@@ -187,10 +187,11 @@ class BaseFief:
         openid_configuration: Dict[str, Any],
         redirect_uri: str,
         *,
-        state: str = None,
+        state: Optional[str] = None,
         scope: Optional[List[str]] = None,
         code_challenge: Optional[str] = None,
         code_challenge_method: Optional[str] = None,
+        lang: Optional[str] = None,
         extras_params: Optional[Mapping[str, str]] = None,
     ) -> str:
         params = {
@@ -208,6 +209,9 @@ class BaseFief:
         if code_challenge is not None and code_challenge_method is not None:
             params["code_challenge"] = code_challenge
             params["code_challenge_method"] = code_challenge_method
+
+        if lang is not None:
+            params["lang"] = lang
 
         if extras_params is not None:
             params = {**params, **extras_params}
@@ -389,10 +393,11 @@ class Fief(BaseFief):
         self,
         redirect_uri: str,
         *,
-        state: str = None,
+        state: Optional[str] = None,
         scope: Optional[List[str]] = None,
         code_challenge: Optional[str] = None,
         code_challenge_method: Optional[str] = None,
+        lang: Optional[str] = None,
         extras_params: Optional[Mapping[str, str]] = None,
     ) -> str:
         """
@@ -404,6 +409,9 @@ class Fief(BaseFief):
         :param code_challenge: Optional code challenge for
         [PKCE process](https://docs.fief.dev/going-further/pkce/).
         :param code_challenge_method: Method used to hash the PKCE code challenge.
+        :param lang: Optional parameter to set the user locale.
+        Should be a valid [RFC 3066](https://www.rfc-editor.org/rfc/rfc3066) language identifier, like `fr` or `pt-PT`.
+        If not provided, the user locale is determined by their browser settings.
         :param extras_params: Optional dictionary containing specific parameters.
 
         **Example:**
@@ -420,6 +428,7 @@ class Fief(BaseFief):
             scope=scope,
             code_challenge=code_challenge,
             code_challenge_method=code_challenge_method,
+            lang=lang,
             extras_params=extras_params,
         )
 
@@ -711,10 +720,11 @@ class FiefAsync(BaseFief):
         self,
         redirect_uri: str,
         *,
-        state: str = None,
+        state: Optional[str] = None,
         scope: Optional[List[str]] = None,
         code_challenge: Optional[str] = None,
         code_challenge_method: Optional[str] = None,
+        lang: Optional[str] = None,
         extras_params: Optional[Mapping[str, str]] = None,
     ) -> str:
         """
@@ -726,6 +736,9 @@ class FiefAsync(BaseFief):
         :param code_challenge: Optional code challenge for
         [PKCE process](https://docs.fief.dev/going-further/pkce/).
         :param code_challenge_method: Method used to hash the PKCE code challenge.
+        :param lang: Optional parameter to set the user locale.
+        Should be a valid [RFC 3066](https://www.rfc-editor.org/rfc/rfc3066) language identifier, like `fr` or `pt-PT`.
+        If not provided, the user locale is determined by their browser settings.
         :param extras_params: Optional dictionary containing specific parameters.
 
         **Example:**
@@ -742,6 +755,7 @@ class FiefAsync(BaseFief):
             scope=scope,
             code_challenge=code_challenge,
             code_challenge_method=code_challenge_method,
+            lang=lang,
             extras_params=extras_params,
         )
 

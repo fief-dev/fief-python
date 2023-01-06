@@ -104,20 +104,30 @@ class TestCustomVerifyCertParameters:
 
 class TestAuthURL:
     @pytest.mark.parametrize(
-        "state,scope,code_challenge,code_challenge_method,extras_params,expected_params",
+        "state,scope,code_challenge,code_challenge_method,lang,extras_params,expected_params",
         [
-            (None, None, None, None, None, ""),
-            ("STATE", None, None, None, None, "&state=STATE"),
-            (None, ["SCOPE_1", "SCOPE_2"], None, None, None, "&scope=SCOPE_1+SCOPE_2"),
-            (None, None, None, None, {"foo": "bar"}, "&foo=bar"),
+            (None, None, None, None, None, None, ""),
+            ("STATE", None, None, None, None, None, "&state=STATE"),
+            (
+                None,
+                ["SCOPE_1", "SCOPE_2"],
+                None,
+                None,
+                None,
+                None,
+                "&scope=SCOPE_1+SCOPE_2",
+            ),
+            (None, None, None, None, None, {"foo": "bar"}, "&foo=bar"),
             (
                 None,
                 None,
                 "CODE_CHALLENGE",
                 "S256",
                 None,
+                None,
                 "&code_challenge=CODE_CHALLENGE&code_challenge_method=S256",
             ),
+            (None, None, None, None, "fr-FR", None, "?lang=fr-FR"),
         ],
     )
     def test_authorization_url(
@@ -126,6 +136,7 @@ class TestAuthURL:
         scope: Optional[List[str]],
         code_challenge: Optional[str],
         code_challenge_method: Optional[str],
+        lang: Optional[str],
         extras_params: Optional[Mapping[str, str]],
         expected_params: str,
         fief_client: Fief,
@@ -137,6 +148,7 @@ class TestAuthURL:
             scope=scope,
             code_challenge=code_challenge,
             code_challenge_method=code_challenge_method,
+            lang=lang,
             extras_params=extras_params,
         )
         assert (
@@ -153,20 +165,30 @@ class TestAuthURL:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "state,scope,code_challenge,code_challenge_method,extras_params,expected_params",
+        "state,scope,code_challenge,code_challenge_method,lang,extras_params,expected_params",
         [
-            (None, None, None, None, None, ""),
-            ("STATE", None, None, None, None, "&state=STATE"),
-            (None, ["SCOPE_1", "SCOPE_2"], None, None, None, "&scope=SCOPE_1+SCOPE_2"),
-            (None, None, None, None, {"foo": "bar"}, "&foo=bar"),
+            (None, None, None, None, None, None, ""),
+            ("STATE", None, None, None, None, None, "&state=STATE"),
+            (
+                None,
+                ["SCOPE_1", "SCOPE_2"],
+                None,
+                None,
+                None,
+                None,
+                "&scope=SCOPE_1+SCOPE_2",
+            ),
+            (None, None, None, None, None, {"foo": "bar"}, "&foo=bar"),
             (
                 None,
                 None,
                 "CODE_CHALLENGE",
                 "S256",
                 None,
+                None,
                 "&code_challenge=CODE_CHALLENGE&code_challenge_method=S256",
             ),
+            (None, None, None, None, "fr-FR", None, "?lang=fr-FR"),
         ],
     )
     async def test_authorization_url_async(
@@ -175,6 +197,7 @@ class TestAuthURL:
         scope: Optional[List[str]],
         code_challenge: Optional[str],
         code_challenge_method: Optional[str],
+        lang: Optional[str],
         extras_params: Optional[Mapping[str, str]],
         expected_params: str,
         fief_async_client: FiefAsync,
@@ -186,6 +209,7 @@ class TestAuthURL:
             scope=scope,
             code_challenge=code_challenge,
             code_challenge_method=code_challenge_method,
+            lang=lang,
             extras_params=extras_params,
         )
         assert (
