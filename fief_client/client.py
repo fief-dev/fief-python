@@ -412,7 +412,7 @@ class Fief(BaseFief):
         :param lang: Optional parameter to set the user locale.
         Should be a valid [RFC 3066](https://www.rfc-editor.org/rfc/rfc3066) language identifier, like `fr` or `pt-PT`.
         If not provided, the user locale is determined by their browser settings.
-        :param extras_params: Optional dictionary containing specific parameters.
+        :param extras_params: Optional dictionary containing [specific parameters](https://docs.fief.dev/going-further/authorize-url/).
 
         **Example:**
 
@@ -739,7 +739,7 @@ class FiefAsync(BaseFief):
         :param lang: Optional parameter to set the user locale.
         Should be a valid [RFC 3066](https://www.rfc-editor.org/rfc/rfc3066) language identifier, like `fr` or `pt-PT`.
         If not provided, the user locale is determined by their browser settings.
-        :param extras_params: Optional dictionary containing specific parameters.
+        :param extras_params: Optional dictionary containing [specific parameters](https://docs.fief.dev/going-further/authorize-url/).
 
         **Example:**
 
