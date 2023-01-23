@@ -162,7 +162,7 @@ class FiefAuth:
         server_address: typing.Tuple[str, int] = ("localhost", 51562),
         redirect_path: str = "/callback",
         *,
-        scope: typing.List[str] = None,
+        scope: typing.Optional[typing.List[str]] = None,
         lang: typing.Optional[str] = None,
         extras_params: typing.Optional[typing.Mapping[str, str]] = None,
     ) -> typing.Tuple[FiefTokenResponse, FiefUserInfo]:
