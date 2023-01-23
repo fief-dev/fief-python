@@ -5,6 +5,10 @@ profile = "black"
 module = "jwcrypto.*"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "halo.*"
+ignore_missing_imports = true
+
 [tool.ruff]
 extend-select = ["I"]
 ignore = ["E501"]
@@ -30,6 +34,7 @@ path = "fief_client/__init__.py"
 features = [
   "fastapi",
   "flask",
+  "cli",
 ]
 dependencies = [
   "black",
@@ -107,6 +112,10 @@ fastapi = [
 
 flask = [
   "flask",
+]
+
+cli = [
+  "halo",
 ]
 
 [project.urls]
