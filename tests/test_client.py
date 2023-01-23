@@ -18,6 +18,7 @@ from fief_client.client import (
     FiefAccessTokenMissingScope,
     FiefAsync,
     FiefIdTokenInvalid,
+    FiefRequestError,
     FiefTokenResponse,
 )
 from fief_client.crypto import get_validation_hash
@@ -226,6 +227,21 @@ class TestAuthURL:
 
 
 class TestAuthCallback:
+    def test_error_response(
+        self, fief_client: Fief, mock_api_requests: respx.MockRouter
+    ):
+        token_route = mock_api_requests.post("/token")
+        token_route.return_value = Response(400, json={"detail": "error"})
+
+        with pytest.raises(FiefRequestError) as excinfo:
+            fief_client.auth_callback(
+                "CODE",
+                "https://www.bretagne.duchy/callback",
+                code_verifier="CODE_VERIFIER",
+            )
+        assert excinfo.value.status_code == 400
+        assert excinfo.value.detail == '{"detail": "error"}'
+
     def test_valid_response(
         self,
         fief_client: Fief,
@@ -260,6 +276,22 @@ class TestAuthCallback:
 
         assert isinstance(userinfo, dict)
         assert userinfo["sub"] == user_id
+
+    @pytest.mark.asyncio
+    async def test_error_response_async(
+        self, fief_async_client: FiefAsync, mock_api_requests: respx.MockRouter
+    ):
+        token_route = mock_api_requests.post("/token")
+        token_route.return_value = Response(400, json={"detail": "error"})
+
+        with pytest.raises(FiefRequestError) as excinfo:
+            await fief_async_client.auth_callback(
+                "CODE",
+                "https://www.bretagne.duchy/callback",
+                code_verifier="CODE_VERIFIER",
+            )
+        assert excinfo.value.status_code == 400
+        assert excinfo.value.detail == '{"detail": "error"}'
 
     @pytest.mark.asyncio
     async def test_valid_response_async(
@@ -299,6 +331,19 @@ class TestAuthCallback:
 
 
 class TestAuthRefreshToken:
+    def test_error_response(
+        self, fief_client: Fief, mock_api_requests: respx.MockRouter
+    ):
+        token_route = mock_api_requests.post("/token")
+        token_route.return_value = Response(400, json={"detail": "error"})
+
+        with pytest.raises(FiefRequestError) as excinfo:
+            fief_client.auth_refresh_token(
+                "REFRESH_TOKEN", scope=["openid", "offline_access"]
+            )
+        assert excinfo.value.status_code == 400
+        assert excinfo.value.detail == '{"detail": "error"}'
+
     def test_valid_response(
         self,
         fief_client: Fief,
@@ -333,6 +378,20 @@ class TestAuthRefreshToken:
 
         assert isinstance(userinfo, dict)
         assert userinfo["sub"] == user_id
+
+    @pytest.mark.asyncio
+    async def test_error_response_async(
+        self, fief_async_client: FiefAsync, mock_api_requests: respx.MockRouter
+    ):
+        token_route = mock_api_requests.post("/token")
+        token_route.return_value = Response(400, json={"detail": "error"})
+
+        with pytest.raises(FiefRequestError) as excinfo:
+            await fief_async_client.auth_refresh_token(
+                "REFRESH_TOKEN", scope=["openid", "offline_access"]
+            )
+        assert excinfo.value.status_code == 400
+        assert excinfo.value.detail == '{"detail": "error"}'
 
     @pytest.mark.asyncio
     async def test_valid_response_async(
@@ -517,6 +576,17 @@ class TestValidateAccessToken:
 
 
 class TestUserinfo:
+    def test_error_response(
+        self, fief_client: Fief, mock_api_requests: respx.MockRouter
+    ):
+        token_route = mock_api_requests.get("/userinfo")
+        token_route.return_value = Response(400, json={"detail": "error"})
+
+        with pytest.raises(FiefRequestError) as excinfo:
+            fief_client.userinfo("ACCESS_TOKEN")
+        assert excinfo.value.status_code == 400
+        assert excinfo.value.detail == '{"detail": "error"}'
+
     def test_valid_response(
         self, fief_client: Fief, mock_api_requests: respx.MockRouter, user_id: str
     ):
@@ -526,6 +596,18 @@ class TestUserinfo:
 
         userinfo = fief_client.userinfo("ACCESS_TOKEN")
         assert userinfo == {"sub": user_id}
+
+    @pytest.mark.asyncio
+    async def test_error_response_async(
+        self, fief_async_client: FiefAsync, mock_api_requests: respx.MockRouter
+    ):
+        token_route = mock_api_requests.get("/userinfo")
+        token_route.return_value = Response(400, json={"detail": "error"})
+
+        with pytest.raises(FiefRequestError) as excinfo:
+            await fief_async_client.userinfo("ACCESS_TOKEN")
+        assert excinfo.value.status_code == 400
+        assert excinfo.value.detail == '{"detail": "error"}'
 
     @pytest.mark.asyncio
     async def test_valid_response_async(
@@ -543,6 +625,17 @@ class TestUserinfo:
 
 
 class TestUpdateProfile:
+    def test_error_response(
+        self, fief_client: Fief, mock_api_requests: respx.MockRouter
+    ):
+        token_route = mock_api_requests.patch("/api/profile")
+        token_route.return_value = Response(400, json={"detail": "error"})
+
+        with pytest.raises(FiefRequestError) as excinfo:
+            fief_client.update_profile("ACCESS_TOKEN", {"email": "anne@bretagne.duchy"})
+        assert excinfo.value.status_code == 400
+        assert excinfo.value.detail == '{"detail": "error"}'
+
     def test_valid_response(
         self, fief_client: Fief, mock_api_requests: respx.MockRouter, user_id: str
     ):
@@ -554,6 +647,20 @@ class TestUpdateProfile:
             "ACCESS_TOKEN", {"email": "anne@bretagne.duchy"}
         )
         assert userinfo == {"sub": user_id}
+
+    @pytest.mark.asyncio
+    async def test_error_response_async(
+        self, fief_async_client: FiefAsync, mock_api_requests: respx.MockRouter
+    ):
+        token_route = mock_api_requests.patch("/api/profile")
+        token_route.return_value = Response(400, json={"detail": "error"})
+
+        with pytest.raises(FiefRequestError) as excinfo:
+            await fief_async_client.update_profile(
+                "ACCESS_TOKEN", {"email": "anne@bretagne.duchy"}
+            )
+        assert excinfo.value.status_code == 400
+        assert excinfo.value.detail == '{"detail": "error"}'
 
     @pytest.mark.asyncio
     async def test_valid_response_async(

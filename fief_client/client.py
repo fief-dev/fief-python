@@ -104,6 +104,16 @@ class FiefError(Exception):
     """Base Fief client error."""
 
 
+class FiefRequestError(FiefError):
+    """The request to Fief server resulted in an error."""
+
+    def __init__(self, status_code: int, detail: str) -> None:
+        self.status_code = status_code
+        self.detail = detail
+        self.message = f"[{status_code}] - {detail}"
+        super().__init__(self.message)
+
+
 class FiefAccessTokenInvalid(FiefError):
     """The access token is invalid."""
 
@@ -364,6 +374,10 @@ class BaseFief:
             json=data,
         )
 
+    def _handle_request_error(self, response: httpx.Response):
+        if response.is_error:
+            raise FiefRequestError(response.status_code, response.text)
+
 
 class Fief(BaseFief):
     """Sync Fief authentication client."""
@@ -490,7 +504,7 @@ class Fief(BaseFief):
             )
             response = client.send(request)
 
-            response.raise_for_status()
+            self._handle_request_error(response)
 
             token_response = response.json()
         jwks = self._get_jwks()
@@ -576,7 +590,7 @@ class Fief(BaseFief):
             )
             response = client.send(request)
 
-            response.raise_for_status()
+            self._handle_request_error(response)
 
             return response.json()
 
@@ -618,7 +632,7 @@ class Fief(BaseFief):
             )
             response = client.send(request)
 
-            response.raise_for_status()
+            self._handle_request_error(response)
 
             return response.json()
 
@@ -687,7 +701,7 @@ class Fief(BaseFief):
             )
             response = client.send(request)
 
-            response.raise_for_status()
+            self._handle_request_error(response)
 
             return response.json()
 
@@ -817,7 +831,7 @@ class FiefAsync(BaseFief):
             )
             response = await client.send(request)
 
-            response.raise_for_status()
+            self._handle_request_error(response)
 
             token_response = response.json()
 
@@ -904,7 +918,7 @@ class FiefAsync(BaseFief):
             )
             response = await client.send(request)
 
-            response.raise_for_status()
+            self._handle_request_error(response)
 
             return response.json()
 
@@ -948,7 +962,7 @@ class FiefAsync(BaseFief):
             )
             response = await client.send(request)
 
-            response.raise_for_status()
+            self._handle_request_error(response)
 
             return response.json()
 
@@ -1019,6 +1033,6 @@ class FiefAsync(BaseFief):
             )
             response = await client.send(request)
 
-            response.raise_for_status()
+            self._handle_request_error(response)
 
             return response.json()

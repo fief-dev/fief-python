@@ -9,6 +9,7 @@ from fief_client.client import (
     FiefAsync,
     FiefError,
     FiefIdTokenInvalid,
+    FiefRequestError,
     FiefTokenResponse,
     FiefUserInfo,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "FiefAccessTokenMissingScope",
     "FiefAccessTokenInvalid",
     "FiefIdTokenInvalid",
+    "FiefRequestError",
     "crypto",
     "pkce",
     "integrations",
