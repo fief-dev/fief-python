@@ -250,7 +250,10 @@ class TestAuthCallback:
 
         token_route_call = token_route.calls.last
         assert token_route_call is not None
-        assert "Authorization" in token_route_call.request.headers
+
+        request_data = token_route_call.request.content.decode("utf-8")
+        assert "client_id" in request_data
+        assert "client_secret" in request_data
 
         assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token
@@ -283,7 +286,10 @@ class TestAuthCallback:
 
         token_route_call = token_route.calls.last
         assert token_route_call is not None
-        assert "Authorization" in token_route_call.request.headers
+
+        request_data = token_route_call.request.content.decode("utf-8")
+        assert "client_id" in request_data
+        assert "client_secret" in request_data
 
         assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token
@@ -317,7 +323,10 @@ class TestAuthRefreshToken:
 
         token_route_call = token_route.calls.last
         assert token_route_call is not None
-        assert "Authorization" in token_route_call.request.headers
+
+        request_data = token_route_call.request.content.decode("utf-8")
+        assert "client_id" in request_data
+        assert "client_secret" in request_data
 
         assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token
@@ -350,7 +359,10 @@ class TestAuthRefreshToken:
 
         token_route_call = token_route.calls.last
         assert token_route_call is not None
-        assert "Authorization" in token_route_call.request.headers
+
+        request_data = token_route_call.request.content.decode("utf-8")
+        assert "client_id" in request_data
+        assert "client_secret" in request_data
 
         assert token_response["access_token"] == access_token
         assert token_response["id_token"] == signed_id_token

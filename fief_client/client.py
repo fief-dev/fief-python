@@ -133,8 +133,14 @@ class BaseFief:
     """Base URL of your Fief tenant."""
     client_id: str
     """ID of your Fief client."""
-    client_secret: str
-    """Secret of your Fief client."""
+    client_secret: Optional[str] = None
+    """
+    Secret of your Fief client.
+
+    If you're implementing a desktop app, it's not recommended to use it,
+    since it can be easily found by the end-user in the source code.
+    The recommended way is to use a [Public client](https://docs.fief.dev/getting-started/clients/#public-clients).
+    """
     encryption_key: Optional[jwk.JWK] = None
     """"""
 
@@ -148,7 +154,7 @@ class BaseFief:
         self,
         base_url: str,
         client_id: str,
-        client_secret: str,
+        client_secret: Optional[str] = None,
         *,
         encryption_key: Optional[str] = None,
         host: Optional[str] = None,
@@ -161,6 +167,9 @@ class BaseFief:
         :param base_url: Base URL of your Fief tenant.
         :param client_id: ID of your Fief client.
         :param client_secret: Secret of your Fief client.
+        If you're implementing a desktop app, it's not recommended to use it,
+        since it can be easily found by the end-user in the source code.
+        The recommended way is to use a [Public client](https://docs.fief.dev/getting-started/clients/#public-clients).
         :param encryption_key: Encryption key of your Fief client.
         Necessary only if [ID Token encryption](https://docs.fief.dev/going-further/id-token-encryption/) is enabled.
         :param verify: Corresponds to the [verify parameter of HTTPX](https://www.python-httpx.org/advanced/#changing-the-verification-defaults).
@@ -302,20 +311,16 @@ class BaseFief:
         redirect_uri: str,
         code_verifier: Optional[str] = None,
     ) -> httpx.Request:
-        basic_auth = httpx.BasicAuth(self.client_id, self.client_secret)
-        return client.build_request(
-            "POST",
-            endpoint,
-            headers={
-                "Authorization": basic_auth._auth_header,
-            },
-            data={
-                "grant_type": "authorization_code",
-                "code": code,
-                "redirect_uri": redirect_uri,
-                "code_verifier": code_verifier,
-            },
-        )
+        data = {
+            "client_id": self.client_id,
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
+            "code_verifier": code_verifier,
+        }
+        if self.client_secret is not None:
+            data["client_secret"] = self.client_secret
+        return client.build_request("POST", endpoint, data=data)
 
     def _get_auth_refresh_token_request(
         self,
@@ -326,21 +331,16 @@ class BaseFief:
         scope: Optional[List[str]] = None,
     ) -> httpx.Request:
         data = {
+            "client_id": self.client_id,
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
         }
+        if self.client_secret is not None:
+            data["client_secret"] = self.client_secret
         if scope is not None:
             data["scope"] = " ".join(scope)
 
-        basic_auth = httpx.BasicAuth(self.client_id, self.client_secret)
-        return client.build_request(
-            "POST",
-            endpoint,
-            headers={
-                "Authorization": basic_auth._auth_header,
-            },
-            data=data,
-        )
+        return client.build_request("POST", endpoint, data=data)
 
     def _get_userinfo_request(
         self, client: HTTPXClient, *, endpoint: str, access_token: str
@@ -372,7 +372,7 @@ class Fief(BaseFief):
         self,
         base_url: str,
         client_id: str,
-        client_secret: str,
+        client_secret: Optional[str] = None,
         *,
         encryption_key: Optional[str] = None,
         host: Optional[str] = None,
@@ -699,7 +699,7 @@ class FiefAsync(BaseFief):
         self,
         base_url: str,
         client_id: str,
-        client_secret: str,
+        client_secret: Optional[str] = None,
         *,
         encryption_key: Optional[str] = None,
         host: Optional[str] = None,
