@@ -4,6 +4,7 @@ import http
 import http.server
 import json
 import pathlib
+import queue
 import typing
 import urllib.parse
 import webbrowser
@@ -50,15 +51,22 @@ class FiefAuthRefreshTokenMissingError(FiefAuthError):
     pass
 
 
-class CallbackHTTPServer(http.server.HTTPServer):
-    code: typing.Optional[str] = None
+class CallbackHTTPServer(http.server.ThreadingHTTPServer):
+    pass
 
 
 class CallbackHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
-    server: CallbackHTTPServer
-
-    def __init__(self, *args, render_callback_page, **kwargs) -> None:
-        self.render_callback_page = render_callback_page
+    def __init__(
+        self,
+        *args,
+        queue: "queue.Queue[str]",
+        render_success_page,
+        render_error_page,
+        **kwargs,
+    ) -> None:
+        self.queue = queue
+        self.render_success_page = render_success_page
+        self.render_error_page = render_error_page
         super().__init__(*args, **kwargs)
 
     def log_message(self, format: str, *args: typing.Any) -> None:
@@ -68,16 +76,26 @@ class CallbackHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         parsed_url = urllib.parse.urlparse(self.path)
         query_params = urllib.parse.parse_qs(parsed_url.query)
 
-        code = query_params["code"][0]
-        self.server.code = code
+        try:
+            code = query_params["code"][0]
+        except (KeyError, IndexError):
+            output = self.render_error_page(query_params).encode("utf-8")
+            self.send_response(http.HTTPStatus.BAD_REQUEST)
+            self.send_header("Content-type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(output)))
+            self.end_headers()
+            self.wfile.write(output)
+        else:
+            self.queue.put(code)
 
-        output = self.render_callback_page().encode("utf-8")
+            output = self.render_success_page().encode("utf-8")
+            self.send_response(http.HTTPStatus.OK)
+            self.send_header("Content-type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(output)))
+            self.end_headers()
+            self.wfile.write(output)
 
-        self.send_response(http.HTTPStatus.OK)
-        self.send_header("Content-type", "text/html; charset=utf-8")
-        self.send_header("Content-Length", str(len(output)))
-        self.end_headers()
-        self.wfile.write(output)
+        self.server.shutdown()
 
 
 class FiefAuth:
@@ -219,17 +237,22 @@ class FiefAuth:
         )
         spinner.start()
 
+        code_queue: queue.Queue[str] = queue.Queue()
         server = CallbackHTTPServer(
             server_address,
             functools.partial(
                 CallbackHTTPRequestHandler,
-                render_callback_page=self.render_callback_page,
+                queue=code_queue,
+                render_success_page=self.render_success_page,
+                render_error_page=self.render_error_page,
             ),
         )
-        server.handle_request()
 
-        code = server.code
-        if code is None:
+        server.serve_forever()
+
+        try:
+            code = code_queue.get(block=False)
+        except queue.Empty:
             raise FiefAuthAuthorizationCodeMissingError()
 
         spinner.text = "Getting a token..."
@@ -243,9 +266,9 @@ class FiefAuth:
 
         return tokens, userinfo
 
-    def render_callback_page(self) -> str:
+    def render_success_page(self) -> str:
         """
-        Generate the HTML page that'll be shown to the user when redirected.
+        Generate the HTML page that'll be shown to the user after a successful redirection.
 
         By default, it just tells the user that it can go back to the CLI.
 
@@ -280,8 +303,37 @@ class FiefAuth:
         </html>
         """
 
+    def render_error_page(self, query_params: typing.Dict[str, typing.Any]) -> str:
+        """
+        Generate the HTML page that'll be shown to the user when something goes wrong during redirection.
+
+        You can override this method if you want to customize this page.
+        """
+        return f"""
+        <html>
+            <head>
+                <link href="{self.client.base_url}/static/auth.css" rel="stylesheet">
+            </head>
+            <body class="antialiased">
+                <main>
+                    <div class="relative flex">
+                        <div class="w-full">
+                            <div class="min-h-screen h-full flex flex flex-col after:flex-1">
+                                <div class="flex-1"></div>
+                                <div class="w-full max-w-sm mx-auto px-4 py-8 text-center">
+                                    <h1 class="text-3xl text-accent font-bold mb-6">Something went wrong! You're not authenticated.</h1>
+                                    <p>Error detail: {json.dumps(query_params)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </body>
+        </html>
+        """
+
     def _refresh_access_token(self):
-        refresh_token = self._tokens["refresh_token"]
+        refresh_token = self._tokens.get("refresh_token")
         if refresh_token is None:
             raise FiefAuthRefreshTokenMissingError()
         tokens, userinfo = self.client.auth_refresh_token(refresh_token)
@@ -290,9 +342,12 @@ class FiefAuth:
     def _load_stored_credentials(self):
         if self.credentials_path.exists():
             with open(self.credentials_path) as file:
-                data = json.loads(file.read())
-                self._userinfo = data["userinfo"]
-                self._tokens = data["tokens"]
+                try:
+                    data = json.loads(file.read())
+                    self._userinfo = data["userinfo"]
+                    self._tokens = data["tokens"]
+                except json.decoder.JSONDecodeError:
+                    pass
 
     def _save_credentials(self, tokens: FiefTokenResponse, userinfo: FiefUserInfo):
         self._tokens = tokens

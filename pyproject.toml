@@ -15,7 +15,7 @@ ignore = ["E501"]
 per-file-ignores = {"tests/test_init.py" = ["F401"]}
 
 [tool.coverage.run]
-concurrency = ["greenlet"]
+concurrency = ["greenlet", "thread"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
