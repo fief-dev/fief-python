@@ -1,4 +1,4 @@
 contact_links:
   - name: 🤔 I have a question
-    url: https://github.com/orgs/fief-dev/discussions/new?category=q-a
+    url: https://github.com/orgs/fief-dev/discussions/new?category=q-a&labels=integration-python
     about: If you have any question about Fief that's not clearly a bug, please open a discussion first.
