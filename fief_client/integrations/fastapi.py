@@ -109,7 +109,7 @@ class FiefAuth:
         client: FiefClientClass,
         scheme: SecurityBase,
         *,
-        get_userinfo_cache: Optional[DependencyCallable[UserInfoCacheProtocol]] = None
+        get_userinfo_cache: Optional[DependencyCallable[UserInfoCacheProtocol]] = None,
     ) -> None:
         """
         :param client: Instance of a Fief client.
