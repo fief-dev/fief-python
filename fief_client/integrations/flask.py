@@ -206,6 +206,9 @@ class FiefAuth:
                         token, required_scope=scope, required_permissions=permissions
                     )
                 except (FiefAccessTokenInvalid, FiefAccessTokenExpired) as e:
+                    if optional:
+                        g.access_token_info = None
+                        return f(*args, **kwargs)
                     raise FiefAuthUnauthorized() from e
                 except (
                     FiefAccessTokenMissingScope,

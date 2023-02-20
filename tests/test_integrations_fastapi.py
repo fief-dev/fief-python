@@ -180,17 +180,24 @@ class TestAuthenticated:
         self, test_client: httpx.AsyncClient, generate_access_token, user_id: str
     ):
         response = await test_client.get("/authenticated-optional")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() is None
 
+        expired_access_token = generate_access_token(
+            encrypt=False, scope="openid", exp=0
+        )
+        response = await test_client.get(
+            "/authenticated-optional",
+            headers={"Authorization": f"Bearer {expired_access_token}"},
+        )
         assert response.status_code == status.HTTP_200_OK
         assert response.json() is None
 
         access_token = generate_access_token(encrypt=False, scope="openid")
-
         response = await test_client.get(
             "/authenticated-optional",
             headers={"Authorization": f"Bearer {access_token}"},
         )
-
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == {
             "id": user_id,
@@ -334,17 +341,24 @@ class TestCurrentUser:
         )
 
         response = await test_client.get("/current-user-optional")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() is None
 
+        expired_access_token = generate_access_token(
+            encrypt=False, scope="openid", exp=0
+        )
+        response = await test_client.get(
+            "/current-user-optional",
+            headers={"Authorization": f"Bearer {expired_access_token}"},
+        )
         assert response.status_code == status.HTTP_200_OK
         assert response.json() is None
 
         access_token = generate_access_token(encrypt=False, scope="openid")
-
         response = await test_client.get(
             "/current-user-optional",
             headers={"Authorization": f"Bearer {access_token}"},
         )
-
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == {"sub": user_id}
 

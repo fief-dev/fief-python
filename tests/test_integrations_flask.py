@@ -147,15 +147,22 @@ class TestAuthenticated:
         assert response.status_code == 200
         assert response.json == {}
 
-        access_token = generate_access_token(encrypt=False, scope="openid")
+        expired_access_token = generate_access_token(
+            encrypt=False, scope="openid", exp=0
+        )
+        response = test_client.get(
+            "/authenticated-optional",
+            headers={"Authorization": f"Bearer {expired_access_token}"},
+        )
+        assert response.status_code == 200
+        assert response.json == {}
 
+        access_token = generate_access_token(encrypt=False, scope="openid")
         response = test_client.get(
             "/authenticated-optional",
             headers={"Authorization": f"Bearer {access_token}"},
         )
-
         assert response.status_code == 200
-
         assert response.json == {
             "id": user_id,
             "scope": ["openid"],
@@ -299,15 +306,22 @@ class TestCurrentUser:
         assert response.status_code == 200
         assert response.json == {}
 
-        access_token = generate_access_token(encrypt=False, scope="openid")
+        expired_access_token = generate_access_token(
+            encrypt=False, scope="openid", exp=0
+        )
+        response = test_client.get(
+            "/current-user-optional",
+            headers={"Authorization": f"Bearer {expired_access_token}"},
+        )
+        assert response.status_code == 200
+        assert response.json == {}
 
+        access_token = generate_access_token(encrypt=False, scope="openid")
         response = test_client.get(
             "/current-user-optional",
             headers={"Authorization": f"Bearer {access_token}"},
         )
-
         assert response.status_code == 200
-
         assert response.json == {"sub": user_id}
 
     def test_missing_scope(self, test_client: FlaskClient, generate_access_token):

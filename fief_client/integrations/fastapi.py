@@ -176,6 +176,8 @@ class FiefAuth:
                 else:
                     info = result
             except (FiefAccessTokenInvalid, FiefAccessTokenExpired):
+                if optional:
+                    return None
                 return await self.get_unauthorized_response(request, response)
             except (FiefAccessTokenMissingScope, FiefAccessTokenMissingPermission):
                 return await self.get_forbidden_response(request, response)
