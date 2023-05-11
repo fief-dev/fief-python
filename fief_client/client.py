@@ -610,7 +610,7 @@ class Fief(BaseFief):
         **Example: Update password**
 
         ```py
-        userinfo = fief.update_profile("ACCESS_TOKEN", { "password": "hermine1" })
+        userinfo = fief.update_profile("ACCESS_TOKEN", { "password": "herminetincture" })
         ```
 
         **Example: Update user field**
@@ -940,7 +940,7 @@ class FiefAsync(BaseFief):
         **Example: Update password**
 
         ```py
-        userinfo = await fief.update_profile("ACCESS_TOKEN", { "password": "hermine1" })
+        userinfo = await fief.update_profile("ACCESS_TOKEN", { "password": "herminetincture" })
         ```
 
         **Example: Update user field**
