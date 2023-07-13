@@ -1,14 +1,7 @@
-import sys
-import uuid
-
-if sys.version_info < (3, 8):
-    from typing_extensions import TypedDict  # pragma: no cover
-else:
-    from typing import TypedDict  # pragma: no cover
-
 import contextlib
 import json
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
+import uuid
+from typing import Any, Dict, List, Mapping, Optional, Tuple, TypedDict, Union
 from urllib.parse import urlencode
 
 import httpx

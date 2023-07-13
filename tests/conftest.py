@@ -12,7 +12,7 @@ from jwcrypto import jwk, jwt
 
 @pytest.fixture(scope="session")
 def keys() -> jwk.JWKSet:
-    with open(path.join(path.dirname(__file__), "jwks.json"), "r") as jwks_file:
+    with open(path.join(path.dirname(__file__), "jwks.json")) as jwks_file:
         return jwk.JWKSet.from_json(jwks_file.read())
 
 

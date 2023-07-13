@@ -89,7 +89,6 @@ license = "MIT"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -97,11 +96,10 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
 ]
 dynamic = ["version"]
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 dependencies = [
     "httpx >=0.21.3,<0.24.0",
     "jwcrypto >=1.4,<2.0.0",
-    "typing-extensions >=4.0.1; python_version < '3.8'",
 ]
 
 [project.optional-dependencies]

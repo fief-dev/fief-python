@@ -1,12 +1,7 @@
 import base64
 import hashlib
 import secrets
-import sys
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Literal  # pragma: no cover
-else:
-    from typing import Literal  # pragma: no cover
+from typing import Literal
 
 
 def get_code_verifier() -> str:

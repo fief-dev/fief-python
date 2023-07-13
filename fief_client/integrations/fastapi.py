@@ -1,5 +1,4 @@
 """FastAPI integration."""
-import sys
 import uuid
 from inspect import Parameter, Signature, isawaitable
 from typing import (
@@ -9,15 +8,11 @@ from typing import (
     Generator,
     List,
     Optional,
+    Protocol,
     TypeVar,
     Union,
     cast,
 )
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol  # pragma: no cover
-else:
-    from typing import Protocol  # pragma: no cover
 
 from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security.base import SecurityBase
