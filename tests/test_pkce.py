@@ -5,7 +5,7 @@ from fief_client.pkce import Method, get_code_challenge, get_code_verifier
 
 def test_get_code_verifier():
     code = get_code_verifier()
-    assert type(code) == str
+    assert isinstance(code, str)
     assert len(code) == 128
 
 
@@ -18,7 +18,7 @@ def test_get_code_verifier():
 )
 def test_code_challenge(code: str, method: Method):
     challenge = get_code_challenge(code, method)
-    assert type(challenge) == str
+    assert isinstance(challenge, str)
 
     if method == "plain":
         assert challenge == code

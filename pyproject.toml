@@ -10,7 +10,8 @@ module = "halo.*"
 ignore_missing_imports = true
 
 [tool.ruff]
-extend-select = ["I"]
+target-version = "py38"
+extend-select = ["I", "UP"]
 ignore = ["E501"]
 per-file-ignores = {"tests/test_init.py" = ["F401"]}
 
