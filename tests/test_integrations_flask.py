@@ -7,7 +7,7 @@ from flask import Flask, g, session
 from flask.testing import FlaskClient
 from httpx import Response
 
-from fief_client.client import Fief, FiefUserInfo
+from fief_client.client import Fief, FiefACR, FiefUserInfo
 from fief_client.integrations.flask import (
     FiefAuth,
     FiefAuthForbidden,
@@ -136,6 +136,7 @@ class TestAuthenticated:
         assert json == {
             "id": user_id,
             "scope": ["openid"],
+            "acr": FiefACR.LEVEL_ZERO,
             "permissions": [],
             "access_token": access_token,
         }
@@ -166,6 +167,7 @@ class TestAuthenticated:
         assert response.json == {
             "id": user_id,
             "scope": ["openid"],
+            "acr": FiefACR.LEVEL_ZERO,
             "permissions": [],
             "access_token": access_token,
         }
@@ -196,6 +198,7 @@ class TestAuthenticated:
         assert json == {
             "id": user_id,
             "scope": ["openid", "required_scope"],
+            "acr": FiefACR.LEVEL_ZERO,
             "permissions": [],
             "access_token": access_token,
         }
@@ -230,6 +233,7 @@ class TestAuthenticated:
         assert json == {
             "id": user_id,
             "scope": [],
+            "acr": FiefACR.LEVEL_ZERO,
             "permissions": ["castles:read", "castles:create"],
             "access_token": access_token,
         }

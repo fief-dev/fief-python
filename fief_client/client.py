@@ -1,6 +1,7 @@
 import contextlib
 import json
 import uuid
+from enum import Enum
 from typing import Any, Dict, List, Mapping, Optional, Tuple, TypedDict, Union
 from urllib.parse import urlencode
 
@@ -11,6 +12,17 @@ from jwcrypto import jwk, jwt
 from fief_client.crypto import is_valid_hash
 
 HTTPXClient = Union[httpx.Client, httpx.AsyncClient]
+
+
+class FiefACR(str, Enum):
+    """
+    List of defined Authentication Context Class Reference.
+    """
+
+    LEVEL_ZERO = "0"
+    """Level 0. No authentication was performed, a previous session was used."""
+    LEVEL_ONE = "1"
+    """Level 1. Password authentication was performed."""
 
 
 class FiefTokenResponse(TypedDict):
@@ -40,6 +52,7 @@ class FiefAccessTokenInfo(TypedDict):
     {
         "id": "aeeb8bfa-e8f4-4724-9427-c3d5af66190e",
         "scope": ["openid", "required_scope"],
+        "acr": "1",
         "permissions": ["castles:read", "castles:create", "castles:update", "castles:delete"],
         "access_token": "ACCESS_TOKEN",
     }
@@ -50,6 +63,8 @@ class FiefAccessTokenInfo(TypedDict):
     """ID of the user."""
     scope: List[str]
     """List of granted scopes for this access token."""
+    acr: FiefACR
+    """Level of Authentication Context class Reference."""
     permissions: List[str]
     """List of [granted permissions](https://docs.fief.dev/getting-started/access-control/) for this user."""
     access_token: str
@@ -259,6 +274,7 @@ class BaseFief:
             return {
                 "id": uuid.UUID(claims["sub"]),
                 "scope": access_token_scope,
+                "acr": claims["acr"],
                 "permissions": permissions,
                 "access_token": access_token,
             }
@@ -365,6 +381,51 @@ class BaseFief:
             endpoint,
             headers={"Authorization": f"Bearer {access_token}"},
             json=data,
+        )
+
+    def _get_change_password_request(
+        self,
+        client: HTTPXClient,
+        *,
+        endpoint: str,
+        access_token: str,
+        new_password: str,
+    ) -> httpx.Request:
+        return client.build_request(
+            "PATCH",
+            endpoint,
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"password": new_password},
+        )
+
+    def _get_email_change_request(
+        self,
+        client: HTTPXClient,
+        *,
+        endpoint: str,
+        access_token: str,
+        email: str,
+    ) -> httpx.Request:
+        return client.build_request(
+            "PATCH",
+            endpoint,
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"email": email},
+        )
+
+    def _get_email_verify_request(
+        self,
+        client: HTTPXClient,
+        *,
+        endpoint: str,
+        access_token: str,
+        code: str,
+    ) -> httpx.Request:
+        return client.build_request(
+            "PATCH",
+            endpoint,
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"code": code},
         )
 
     def _handle_request_error(self, response: httpx.Response):
@@ -594,18 +655,6 @@ class Fief(BaseFief):
         :param access_token: A valid access token.
         :param data: A dictionary containing the data to update.
 
-        **Example: Update email address**
-
-        ```py
-        userinfo = fief.update_profile("ACCESS_TOKEN", { "email": "anne@nantes.city" })
-        ```
-
-        **Example: Update password**
-
-        ```py
-        userinfo = fief.update_profile("ACCESS_TOKEN", { "password": "herminetincture" })
-        ```
-
         **Example: Update user field**
 
         To update [user field](https://docs.fief.dev/getting-started/user-fields/) values, you need to nest them into a `fields` dictionary, indexed by their slug.
@@ -622,6 +671,99 @@ class Fief(BaseFief):
                 endpoint=update_profile_endpoint,
                 access_token=access_token,
                 data=data,
+            )
+            response = client.send(request)
+
+            self._handle_request_error(response)
+
+            return response.json()
+
+    def change_password(self, access_token: str, new_password: str) -> FiefUserInfo:
+        """
+        Change the user password with the Fief API using a valid access token.
+
+        **An access token with an ACR of at least level 1 is required.**
+
+        :param access_token: A valid access token.
+        :param new_password: The new password.
+
+        **Example**
+
+        ```py
+        userinfo = fief.change_password("ACCESS_TOKEN", "herminetincture")
+        ```
+        """
+        change_password_profile_endpoint = f"{self.base_url}/api/password"
+
+        with self._get_httpx_client() as client:
+            request = self._get_change_password_request(
+                client,
+                endpoint=change_password_profile_endpoint,
+                access_token=access_token,
+                new_password=new_password,
+            )
+            response = client.send(request)
+
+            self._handle_request_error(response)
+
+            return response.json()
+
+    def email_change(self, access_token: str, email: str) -> FiefUserInfo:
+        """
+        Request an email change with the Fief API using a valid access token.
+
+        The user will receive a verification code on this new email address.
+        It shall be used with the method `email_verify` to complete the modification.
+
+        **An access token with an ACR of at least level 1 is required.**
+
+        :param access_token: A valid access token.
+        :param email: The new email address.
+
+        **Example**
+
+        ```py
+        userinfo = fief.email_change("ACCESS_TOKEN", "anne@nantes.city")
+        ```
+        """
+        email_change_endpoint = f"{self.base_url}/api/email/change"
+
+        with self._get_httpx_client() as client:
+            request = self._get_email_change_request(
+                client,
+                endpoint=email_change_endpoint,
+                access_token=access_token,
+                email=email,
+            )
+            response = client.send(request)
+
+            self._handle_request_error(response)
+
+            return response.json()
+
+    def email_verify(self, access_token: str, code: str) -> FiefUserInfo:
+        """
+        Verify the user email with the Fief API using a valid access token and verification code.
+
+        **An access token with an ACR of at least level 1 is required.**
+
+        :param access_token: A valid access token.
+        :param code: The verification code received by email.
+
+        **Example**
+
+        ```py
+        userinfo = fief.email_verify("ACCESS_TOKEN", "ABCDE")
+        ```
+        """
+        email_verify_endpoint = f"{self.base_url}/api/email/verify"
+
+        with self._get_httpx_client() as client:
+            request = self._get_email_verify_request(
+                client,
+                endpoint=email_verify_endpoint,
+                access_token=access_token,
+                code=code,
             )
             response = client.send(request)
 
@@ -924,18 +1066,6 @@ class FiefAsync(BaseFief):
         :param access_token: A valid access token.
         :param data: A dictionary containing the data to update.
 
-        **Example: Update email address**
-
-        ```py
-        userinfo = await fief.update_profile("ACCESS_TOKEN", { "email": "anne@nantes.city" })
-        ```
-
-        **Example: Update password**
-
-        ```py
-        userinfo = await fief.update_profile("ACCESS_TOKEN", { "password": "herminetincture" })
-        ```
-
         **Example: Update user field**
 
         To update [user field](https://docs.fief.dev/getting-started/user-fields/) values, you need to nest them into a `fields` dictionary, indexed by their slug.
@@ -952,6 +1082,101 @@ class FiefAsync(BaseFief):
                 endpoint=update_profile_endpoint,
                 access_token=access_token,
                 data=data,
+            )
+            response = await client.send(request)
+
+            self._handle_request_error(response)
+
+            return response.json()
+
+    async def change_password(
+        self, access_token: str, new_password: str
+    ) -> FiefUserInfo:
+        """
+        Change the user password with the Fief API using a valid access token.
+
+        **An access token with an ACR of at least level 1 is required.**
+
+        :param access_token: A valid access token.
+        :param new_password: The new password.
+
+        **Example**
+
+        ```py
+        userinfo = await fief.change_password("ACCESS_TOKEN", "herminetincture")
+        ```
+        """
+        change_password_profile_endpoint = f"{self.base_url}/api/password"
+
+        async with self._get_httpx_client() as client:
+            request = self._get_change_password_request(
+                client,
+                endpoint=change_password_profile_endpoint,
+                access_token=access_token,
+                new_password=new_password,
+            )
+            response = await client.send(request)
+
+            self._handle_request_error(response)
+
+            return response.json()
+
+    async def email_change(self, access_token: str, email: str) -> FiefUserInfo:
+        """
+        Request an email change with the Fief API using a valid access token.
+
+        The user will receive a verification code on this new email address.
+        It shall be used with the method `email_verify` to complete the modification.
+
+        **An access token with an ACR of at least level 1 is required.**
+
+        :param access_token: A valid access token.
+        :param email: The new email address.
+
+        **Example**
+
+        ```py
+        userinfo = await fief.email_change("ACCESS_TOKEN", "anne@nantes.city")
+        ```
+        """
+        email_change_endpoint = f"{self.base_url}/api/email/change"
+
+        async with self._get_httpx_client() as client:
+            request = self._get_email_change_request(
+                client,
+                endpoint=email_change_endpoint,
+                access_token=access_token,
+                email=email,
+            )
+            response = await client.send(request)
+
+            self._handle_request_error(response)
+
+            return response.json()
+
+    async def email_verify(self, access_token: str, code: str) -> FiefUserInfo:
+        """
+        Verify the user email with the Fief API using a valid access token and verification code.
+
+        **An access token with an ACR of at least level 1 is required.**
+
+        :param access_token: A valid access token.
+        :param code: The verification code received by email.
+
+        **Example**
+
+        ```py
+        userinfo = fief.email_verify("ACCESS_TOKEN", "ABCDE")
+        ```
+        """
+        email_verify_endpoint = f"{self.base_url}/api/email/verify"
+
+        async with self._get_httpx_client() as client:
+            request = self._get_email_verify_request(
+                client,
+                endpoint=email_verify_endpoint,
+                access_token=access_token,
+                code=code,
             )
             response = await client.send(request)
 

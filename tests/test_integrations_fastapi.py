@@ -11,7 +11,13 @@ from fastapi.security.http import HTTPBearer
 from fastapi.security.oauth2 import OAuth2PasswordBearer
 from httpx import Response
 
-from fief_client.client import Fief, FiefAccessTokenInfo, FiefAsync, FiefUserInfo
+from fief_client.client import (
+    Fief,
+    FiefAccessTokenInfo,
+    FiefACR,
+    FiefAsync,
+    FiefUserInfo,
+)
 from fief_client.integrations.fastapi import FiefAuth, FiefClientClass
 
 
@@ -172,6 +178,7 @@ class TestAuthenticated:
         assert json == {
             "id": user_id,
             "scope": ["openid"],
+            "acr": FiefACR.LEVEL_ZERO,
             "permissions": [],
             "access_token": access_token,
         }
@@ -202,6 +209,7 @@ class TestAuthenticated:
         assert response.json() == {
             "id": user_id,
             "scope": ["openid"],
+            "acr": FiefACR.LEVEL_ZERO,
             "permissions": [],
             "access_token": access_token,
         }
@@ -234,6 +242,7 @@ class TestAuthenticated:
         assert json == {
             "id": user_id,
             "scope": ["openid", "required_scope"],
+            "acr": FiefACR.LEVEL_ZERO,
             "permissions": [],
             "access_token": access_token,
         }
@@ -270,6 +279,7 @@ class TestAuthenticated:
         assert json == {
             "id": user_id,
             "scope": [],
+            "acr": FiefACR.LEVEL_ZERO,
             "permissions": ["castles:read", "castles:create"],
             "access_token": access_token,
         }

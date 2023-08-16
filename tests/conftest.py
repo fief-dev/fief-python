@@ -9,6 +9,8 @@ import respx
 from httpx import Response
 from jwcrypto import jwk, jwt
 
+from fief_client import FiefACR
+
 
 @pytest.fixture(scope="session")
 def keys() -> jwk.JWKSet:
@@ -67,10 +69,15 @@ def generate_token(signature_key: jwk.JWK, encryption_key: jwk.JWK, user_id: str
 @pytest.fixture(scope="session")
 def generate_access_token(generate_token: Callable[..., str]):
     def _generate_access_token(
-        encrypt: bool, *, scope: str = "", permissions: List[str] = [], **kwargs
+        encrypt: bool,
+        *,
+        scope: str = "",
+        permissions: List[str] = [],
+        acr: FiefACR = FiefACR.LEVEL_ZERO,
+        **kwargs,
     ) -> str:
         return generate_token(
-            encrypt=encrypt, scope=scope, permissions=permissions, **kwargs
+            encrypt=encrypt, scope=scope, permissions=permissions, acr=acr, **kwargs
         )
 
     return _generate_access_token

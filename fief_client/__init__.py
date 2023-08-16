@@ -6,6 +6,7 @@ from fief_client.client import (
     FiefAccessTokenInvalid,
     FiefAccessTokenMissingPermission,
     FiefAccessTokenMissingScope,
+    FiefACR,
     FiefAsync,
     FiefError,
     FiefIdTokenInvalid,
@@ -18,6 +19,7 @@ __version__ = "0.17.0"
 
 __all__ = [
     "Fief",
+    "FiefACR",
     "FiefAsync",
     "FiefTokenResponse",
     "FiefAccessTokenInfo",

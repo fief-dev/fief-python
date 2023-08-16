@@ -1,7 +1,7 @@
 import contextlib
 import json
 import uuid
-from typing import Dict, List, Mapping, Optional
+from typing import Dict, List, Mapping, Optional, Tuple
 
 import httpx
 import pytest
@@ -16,6 +16,7 @@ from fief_client.client import (
     FiefAccessTokenInvalid,
     FiefAccessTokenMissingPermission,
     FiefAccessTokenMissingScope,
+    FiefACR,
     FiefAsync,
     FiefIdTokenInvalid,
     FiefRequestError,
@@ -465,6 +466,7 @@ class TestValidateAccessToken:
         assert info == {
             "id": uuid.UUID(user_id),
             "scope": ["openid", "offline_access"],
+            "acr": FiefACR.LEVEL_ZERO,
             "permissions": [],
             "access_token": access_token,
         }
@@ -490,6 +492,7 @@ class TestValidateAccessToken:
         assert info == {
             "id": uuid.UUID(user_id),
             "scope": [],
+            "acr": FiefACR.LEVEL_ZERO,
             "permissions": ["castles:read", "castles:create"],
             "access_token": access_token,
         }
@@ -541,6 +544,7 @@ class TestValidateAccessToken:
         assert info == {
             "id": uuid.UUID(user_id),
             "scope": ["openid", "offline_access"],
+            "acr": FiefACR.LEVEL_ZERO,
             "permissions": [],
             "access_token": access_token,
         }
@@ -570,6 +574,7 @@ class TestValidateAccessToken:
         assert info == {
             "id": uuid.UUID(user_id),
             "scope": [],
+            "acr": FiefACR.LEVEL_ZERO,
             "permissions": ["castles:read", "castles:create"],
             "access_token": access_token,
         }
@@ -624,58 +629,88 @@ class TestUserinfo:
         assert userinfo == {"sub": user_id}
 
 
-class TestUpdateProfile:
+@pytest.mark.parametrize(
+    "endpoint,method_name,args",
+    [
+        (
+            "/api/profile",
+            "update_profile",
+            ("ACCESS_TOKEN", {"fields": {"first_name": "Anne"}}),
+        ),
+        ("/api/password", "change_password", ("ACCESS_TOKEN", "herminetincture")),
+        ("/api/email/change", "email_change", ("ACCESS_TOKEN", "anne@nantes.city")),
+        ("/api/email/verify", "email_verify", ("ACCESS_TOKEN", "ABCDE")),
+    ],
+)
+class TestUpdateUserMethods:
     def test_error_response(
-        self, fief_client: Fief, mock_api_requests: respx.MockRouter
+        self,
+        endpoint: str,
+        method_name: str,
+        args: Tuple,
+        fief_client: Fief,
+        mock_api_requests: respx.MockRouter,
     ):
-        token_route = mock_api_requests.patch("/api/profile")
-        token_route.return_value = Response(400, json={"detail": "error"})
+        route = mock_api_requests.patch(endpoint)
+        route.return_value = Response(400, json={"detail": "error"})
 
         with pytest.raises(FiefRequestError) as excinfo:
-            fief_client.update_profile("ACCESS_TOKEN", {"email": "anne@bretagne.duchy"})
+            method = getattr(fief_client, method_name)
+            method(*args)
         assert excinfo.value.status_code == 400
         assert excinfo.value.detail == '{"detail": "error"}'
 
     def test_valid_response(
-        self, fief_client: Fief, mock_api_requests: respx.MockRouter, user_id: str
+        self,
+        endpoint: str,
+        method_name: str,
+        args: Tuple,
+        fief_client: Fief,
+        mock_api_requests: respx.MockRouter,
+        user_id: str,
     ):
-        mock_api_requests.patch("/api/profile").return_value = Response(
+        mock_api_requests.patch(endpoint).return_value = Response(
             200, json={"sub": user_id}
         )
 
-        userinfo = fief_client.update_profile(
-            "ACCESS_TOKEN", {"email": "anne@bretagne.duchy"}
-        )
+        method = getattr(fief_client, method_name)
+        userinfo = method(*args)
         assert userinfo == {"sub": user_id}
 
     @pytest.mark.asyncio
     async def test_error_response_async(
-        self, fief_async_client: FiefAsync, mock_api_requests: respx.MockRouter
+        self,
+        endpoint: str,
+        method_name: str,
+        args: Tuple,
+        fief_async_client: FiefAsync,
+        mock_api_requests: respx.MockRouter,
     ):
-        token_route = mock_api_requests.patch("/api/profile")
-        token_route.return_value = Response(400, json={"detail": "error"})
+        route = mock_api_requests.patch(endpoint)
+        route.return_value = Response(400, json={"detail": "error"})
 
         with pytest.raises(FiefRequestError) as excinfo:
-            await fief_async_client.update_profile(
-                "ACCESS_TOKEN", {"email": "anne@bretagne.duchy"}
-            )
+            method = getattr(fief_async_client, method_name)
+            await method(*args)
         assert excinfo.value.status_code == 400
         assert excinfo.value.detail == '{"detail": "error"}'
 
     @pytest.mark.asyncio
     async def test_valid_response_async(
         self,
+        endpoint: str,
+        method_name: str,
+        args: Tuple,
         fief_async_client: FiefAsync,
         mock_api_requests: respx.MockRouter,
         user_id: str,
     ):
-        mock_api_requests.patch("/api/profile").return_value = Response(
+        mock_api_requests.patch(endpoint).return_value = Response(
             200, json={"sub": user_id}
         )
 
-        userinfo = await fief_async_client.update_profile(
-            "ACCESS_TOKEN", {"email": "anne@bretagne.duchy"}
-        )
+        method = getattr(fief_async_client, method_name)
+        userinfo = await method(*args)
         assert userinfo == {"sub": user_id}
 
 
