@@ -1,6 +1,7 @@
 "Fief client for Python."
 from fief_client.client import (
     Fief,
+    FiefAccessTokenACRTooLow,
     FiefAccessTokenExpired,
     FiefAccessTokenInfo,
     FiefAccessTokenInvalid,
@@ -25,6 +26,7 @@ __all__ = [
     "FiefAccessTokenInfo",
     "FiefUserInfo",
     "FiefError",
+    "FiefAccessTokenACRTooLow",
     "FiefAccessTokenExpired",
     "FiefAccessTokenMissingPermission",
     "FiefAccessTokenMissingScope",

@@ -7,10 +7,12 @@ from flask import g, request
 
 from fief_client import (
     Fief,
+    FiefAccessTokenACRTooLow,
     FiefAccessTokenExpired,
     FiefAccessTokenInfo,
     FiefAccessTokenInvalid,
     FiefAccessTokenMissingScope,
+    FiefACR,
     FiefUserInfo,
 )
 from fief_client.client import FiefAccessTokenMissingPermission
@@ -47,7 +49,7 @@ class FiefAuthForbidden(FiefAuthError):
     Request forbidden error.
 
     This error is raised when using the `authenticated` or `current_user` decorator
-    but the access token doesn't match the list of scopes or permissions.
+    but the access token doesn't match the list of scopes, permissions or minimum ACR level.
 
     You should implement an `errorhandler` to define the behavior of your server when
     this happens.
@@ -166,6 +168,7 @@ class FiefAuth:
         *,
         optional: bool = False,
         scope: Optional[List[str]] = None,
+        acr: Optional[FiefACR] = None,
         permissions: Optional[List[str]] = None,
     ):
         """
@@ -178,6 +181,9 @@ class FiefAuth:
         a `FiefAuthUnauthorized` error will be raised.
         :param scope: Optional list of scopes required.
         If the access token lacks one of the required scope, a `FiefAuthForbidden` error will be raised.
+        :param acr: Optional minimum ACR level required.
+        If the access token doesn't meet the minimum level, a `FiefAuthForbidden` error will be raised.
+        Read more: https://docs.fief.dev/going-further/acr/
         :param permissions: Optional list of permissions required.
         If the access token lacks one of the required permission, a `FiefAuthForbidden` error will be raised.
 
@@ -203,7 +209,10 @@ class FiefAuth:
 
                 try:
                     info = self.client.validate_access_token(
-                        token, required_scope=scope, required_permissions=permissions
+                        token,
+                        required_scope=scope,
+                        required_acr=acr,
+                        required_permissions=permissions,
                     )
                 except (FiefAccessTokenInvalid, FiefAccessTokenExpired) as e:
                     if optional:
@@ -212,6 +221,7 @@ class FiefAuth:
                     raise FiefAuthUnauthorized() from e
                 except (
                     FiefAccessTokenMissingScope,
+                    FiefAccessTokenACRTooLow,
                     FiefAccessTokenMissingPermission,
                 ) as e:
                     raise FiefAuthForbidden() from e
@@ -229,6 +239,7 @@ class FiefAuth:
         *,
         optional: bool = False,
         scope: Optional[List[str]] = None,
+        acr: Optional[FiefACR] = None,
         permissions: Optional[List[str]] = None,
         refresh: bool = False,
     ):
@@ -242,6 +253,9 @@ class FiefAuth:
         a `FiefAuthUnauthorized` error will be raised.
         :param scope: Optional list of scopes required.
         If the access token lacks one of the required scope, a `FiefAuthForbidden` error will be raised.
+        :param acr: Optional minimum ACR level required.
+        If the access token doesn't meet the minimum level, a `FiefAuthForbidden` error will be raised.
+        Read more: https://docs.fief.dev/going-further/acr/
         :param permissions: Optional list of permissions required.
         If the access token lacks one of the required permission, a `FiefAuthForbidden` error will be raised.
         :param refresh: If `True`, the user information will be refreshed from the Fief API.
@@ -260,7 +274,9 @@ class FiefAuth:
 
         def _current_user(f):
             @wraps(f)
-            @self.authenticated(optional=optional, scope=scope, permissions=permissions)
+            @self.authenticated(
+                optional=optional, scope=scope, acr=acr, permissions=permissions
+            )
             def decorated_function(*args, **kwargs):
                 access_token_info: Optional[FiefAccessTokenInfo] = g.access_token_info
 

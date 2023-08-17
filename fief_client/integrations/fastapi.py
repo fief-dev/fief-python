@@ -21,11 +21,13 @@ from makefun import with_signature
 
 from fief_client import (
     Fief,
+    FiefAccessTokenACRTooLow,
     FiefAccessTokenExpired,
     FiefAccessTokenInfo,
     FiefAccessTokenInvalid,
     FiefAccessTokenMissingPermission,
     FiefAccessTokenMissingScope,
+    FiefACR,
     FiefAsync,
     FiefUserInfo,
 )
@@ -124,6 +126,7 @@ class FiefAuth:
         self,
         optional: bool = False,
         scope: Optional[List[str]] = None,
+        acr: Optional[FiefACR] = None,
         permissions: Optional[List[str]] = None,
     ):
         """
@@ -135,6 +138,9 @@ class FiefAuth:
         an unauthorized response will be raised.
         :param scope: Optional list of scopes required.
         If the access token lacks one of the required scope, a forbidden response will be raised.
+        :param acr: Optional minimum ACR level required.
+        If the access token doesn't meet the minimum level, a forbidden response will be raised.
+        Read more: https://docs.fief.dev/going-further/acr/
         :param permissions: Optional list of permissions required.
         If the access token lacks one of the required permission, a forbidden response will be raised.
 
@@ -164,7 +170,10 @@ class FiefAuth:
 
             try:
                 result = self.client.validate_access_token(
-                    token, required_scope=scope, required_permissions=permissions
+                    token,
+                    required_scope=scope,
+                    required_acr=acr,
+                    required_permissions=permissions,
                 )
                 if isawaitable(result):
                     info = await result
@@ -174,7 +183,11 @@ class FiefAuth:
                 if optional:
                     return None
                 return await self.get_unauthorized_response(request, response)
-            except (FiefAccessTokenMissingScope, FiefAccessTokenMissingPermission):
+            except (
+                FiefAccessTokenMissingScope,
+                FiefAccessTokenACRTooLow,
+                FiefAccessTokenMissingPermission,
+            ):
                 return await self.get_forbidden_response(request, response)
 
             return info
@@ -185,6 +198,7 @@ class FiefAuth:
         self,
         optional: bool = False,
         scope: Optional[List[str]] = None,
+        acr: Optional[FiefACR] = None,
         permissions: Optional[List[str]] = None,
         refresh: bool = False,
     ):
@@ -199,6 +213,9 @@ class FiefAuth:
         an unauthorized response will be raised.
         :param scope: Optional list of scopes required.
         If the access token lacks one of the required scope, a forbidden response will be raised.
+        :param acr: Optional minimum ACR level required.
+        If the access token doesn't meet the minimum level, a forbidden response will be raised.
+        Read more: https://docs.fief.dev/going-further/acr/
         :param permissions: Optional list of permissions required.
         If the access token lacks one of the required permission, a forbidden response will be raised.
         :param refresh: If `True`, the user information will be refreshed from the Fief API.
@@ -215,7 +232,7 @@ class FiefAuth:
         ```
         """
         signature = self._get_current_user_call_signature(
-            self.authenticated(optional, scope, permissions)
+            self.authenticated(optional, scope, acr, permissions)
         )
 
         @with_signature(signature)

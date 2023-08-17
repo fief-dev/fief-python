@@ -80,6 +80,14 @@ def fastapi_app(fief_client: FiefClientClass, scheme: SecurityBase) -> FastAPI:
     ):
         return access_token_info
 
+    @app.get("/authenticated-acr")
+    async def get_authenticated_acr(
+        access_token_info: FiefAccessTokenInfo = Depends(
+            auth.authenticated(acr=FiefACR.LEVEL_ONE)
+        ),
+    ):
+        return access_token_info
+
     @app.get("/authenticated-permission")
     async def get_authenticated_permission(
         access_token_info: FiefAccessTokenInfo = Depends(
@@ -113,6 +121,12 @@ def fastapi_app(fief_client: FiefClientClass, scheme: SecurityBase) -> FastAPI:
         current_user: FiefUserInfo = Depends(
             auth.current_user(scope=["required_scope"])
         ),
+    ):
+        return current_user
+
+    @app.get("/current-user-acr")
+    async def get_current_user_acr(
+        current_user: FiefUserInfo = Depends(auth.current_user(acr=FiefACR.LEVEL_ONE)),
     ):
         return current_user
 
@@ -243,6 +257,37 @@ class TestAuthenticated:
             "id": user_id,
             "scope": ["openid", "required_scope"],
             "acr": FiefACR.LEVEL_ZERO,
+            "permissions": [],
+            "access_token": access_token,
+        }
+
+    async def test_invalid_acr(
+        self, test_client: httpx.AsyncClient, generate_access_token
+    ):
+        access_token = generate_access_token(encrypt=False, acr=FiefACR.LEVEL_ZERO)
+
+        response = await test_client.get(
+            "/authenticated-acr", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    async def test_valid_acr(
+        self, test_client: httpx.AsyncClient, generate_access_token, user_id: str
+    ):
+        access_token = generate_access_token(encrypt=False, acr=FiefACR.LEVEL_ONE)
+
+        response = await test_client.get(
+            "/authenticated-acr", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        json = response.json()
+        assert json == {
+            "id": user_id,
+            "scope": [],
+            "acr": FiefACR.LEVEL_ONE,
             "permissions": [],
             "access_token": access_token,
         }
@@ -400,6 +445,39 @@ class TestCurrentUser:
 
         response = await test_client.get(
             "/current-user-scope", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        json = response.json()
+        assert json == {"sub": user_id}
+
+    async def test_missing_acr(
+        self, test_client: httpx.AsyncClient, generate_access_token
+    ):
+        access_token = generate_access_token(encrypt=False, acr=FiefACR.LEVEL_ZERO)
+
+        response = await test_client.get(
+            "/current-user-acr", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    async def test_valid_acr(
+        self,
+        test_client: httpx.AsyncClient,
+        generate_access_token,
+        mock_api_requests: respx.MockRouter,
+        user_id: str,
+    ):
+        mock_api_requests.get("/userinfo").return_value = Response(
+            200, json={"sub": user_id}
+        )
+
+        access_token = generate_access_token(encrypt=False, acr=FiefACR.LEVEL_ONE)
+
+        response = await test_client.get(
+            "/current-user-acr", headers={"Authorization": f"Bearer {access_token}"}
         )
 
         assert response.status_code == status.HTTP_200_OK

@@ -24,6 +24,32 @@ class FiefACR(str, Enum):
     LEVEL_ONE = "1"
     """Level 1. Password authentication was performed."""
 
+    def __lt__(self, other: object) -> bool:
+        return self._compare(other, True, True)
+
+    def __le__(self, other: object) -> bool:
+        return self._compare(other, False, True)
+
+    def __gt__(self, other: object) -> bool:
+        return self._compare(other, True, False)
+
+    def __ge__(self, other: object) -> bool:
+        return self._compare(other, False, False)
+
+    def _compare(self, other: object, strict: bool, asc: bool) -> bool:
+        if not isinstance(other, FiefACR):
+            return NotImplemented  # pragma: no cover
+
+        if self == other:
+            return not strict
+
+        for elem in FiefACR:
+            if self == elem:
+                return asc
+            elif other == elem:
+                return not asc
+        raise RuntimeError()  # pragma: no cover
+
 
 class FiefTokenResponse(TypedDict):
     """
@@ -132,6 +158,10 @@ class FiefAccessTokenExpired(FiefError):
 
 class FiefAccessTokenMissingScope(FiefError):
     """The access token is missing a required scope."""
+
+
+class FiefAccessTokenACRTooLow(FiefError):
+    """The access token doesn't meet the minimum ACR level."""
 
 
 class FiefAccessTokenMissingPermission(FiefError):
@@ -254,6 +284,7 @@ class BaseFief:
         jwks: jwk.JWKSet,
         *,
         required_scope: Optional[List[str]] = None,
+        required_acr: Optional[FiefACR] = None,
         required_permissions: Optional[List[str]] = None,
     ) -> FiefAccessTokenInfo:
         try:
@@ -265,6 +296,15 @@ class BaseFief:
                     if scope not in access_token_scope:
                         raise FiefAccessTokenMissingScope()
 
+            try:
+                acr = FiefACR(claims["acr"])
+            except ValueError as e:
+                raise FiefAccessTokenInvalid() from e
+
+            if required_acr is not None:
+                if acr < required_acr:
+                    raise FiefAccessTokenACRTooLow()
+
             permissions: List[str] = claims["permissions"]
             if required_permissions is not None:
                 for required_permission in required_permissions:
@@ -274,7 +314,7 @@ class BaseFief:
             return {
                 "id": uuid.UUID(claims["sub"]),
                 "scope": access_token_scope,
-                "acr": claims["acr"],
+                "acr": acr,
                 "permissions": permissions,
                 "access_token": access_token,
             }
@@ -574,6 +614,7 @@ class Fief(BaseFief):
         access_token: str,
         *,
         required_scope: Optional[List[str]] = None,
+        required_acr: Optional[FiefACR] = None,
         required_permissions: Optional[List[str]] = None,
     ) -> FiefAccessTokenInfo:
         """
@@ -583,6 +624,8 @@ class Fief(BaseFief):
 
         :param access_token: The access token to validate.
         :param required_scope: Optional list of scopes to check for.
+        :param required_acr: Optional minimum ACR level required.
+        Read more: https://docs.fief.dev/going-further/acr/
         :param required_permissions: Optional list of permissions to check for.
 
         **Example: Validate access token with required scopes**
@@ -596,6 +639,21 @@ class Fief(BaseFief):
             print("Expired access token")
         except FiefAccessTokenMissingScope:
             print("Missing required scope")
+
+        print(access_token_info)
+        ```
+
+        **Example: Validate access token with minimum ACR level**
+
+        ```py
+        try:
+            access_token_info = fief.validate_access_token("ACCESS_TOKEN", required_acr=FiefACR.LEVEL_ONE)
+        except FiefAccessTokenInvalid:
+            print("Invalid access token")
+        except FiefAccessTokenExpired:
+            print("Expired access token")
+        except FiefAccessTokenACRTooLow:
+            print("ACR too low")
 
         print(access_token_info)
         ```
@@ -620,6 +678,7 @@ class Fief(BaseFief):
             access_token,
             jwks,
             required_scope=required_scope,
+            required_acr=required_acr,
             required_permissions=required_permissions,
         )
 
@@ -983,6 +1042,7 @@ class FiefAsync(BaseFief):
         access_token: str,
         *,
         required_scope: Optional[List[str]] = None,
+        required_acr: Optional[FiefACR] = None,
         required_permissions: Optional[List[str]] = None,
     ) -> FiefAccessTokenInfo:
         """
@@ -992,6 +1052,8 @@ class FiefAsync(BaseFief):
 
         :param access_token: The access token to validate.
         :param required_scope: Optional list of scopes to check for.
+        :param required_acr: Optional minimum ACR level required.
+        Read more: https://docs.fief.dev/going-further/acr/
         :param required_permissions: Optional list of permissions to check for.
 
         **Example: Validate access token with required scopes**
@@ -1005,6 +1067,21 @@ class FiefAsync(BaseFief):
             print("Expired access token")
         except FiefAccessTokenMissingScope:
             print("Missing required scope")
+
+        print(access_token_info)
+        ```
+
+        **Example: Validate access token with minimum ACR level**
+
+        ```py
+        try:
+            access_token_info = await fief.validate_access_token("ACCESS_TOKEN", required_acr=FiefACR.LEVEL_ONE)
+        except FiefAccessTokenInvalid:
+            print("Invalid access token")
+        except FiefAccessTokenExpired:
+            print("Expired access token")
+        except FiefAccessTokenACRTooLow:
+            print("ACR too low")
 
         print(access_token_info)
         ```
@@ -1029,6 +1106,7 @@ class FiefAsync(BaseFief):
             access_token,
             jwks,
             required_scope=required_scope,
+            required_acr=required_acr,
             required_permissions=required_permissions,
         )
 

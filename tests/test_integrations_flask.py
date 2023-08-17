@@ -63,6 +63,11 @@ def flask_app(fief_client: Fief) -> Generator[Flask, None, None]:
     def get_authenticated_scope():
         return g.access_token_info
 
+    @app.get("/authenticated-acr")
+    @auth.authenticated(acr=FiefACR.LEVEL_ONE)
+    def get_authenticated_acr():
+        return g.access_token_info
+
     @app.get("/authenticated-permission")
     @auth.authenticated(permissions=["castles:create"])
     def get_authenticated_permission():
@@ -86,6 +91,11 @@ def flask_app(fief_client: Fief) -> Generator[Flask, None, None]:
     @app.get("/current-user-scope")
     @auth.current_user(scope=["required_scope"])
     def get_current_user_scope():
+        return g.user
+
+    @app.get("/current-user-acr")
+    @auth.current_user(acr=FiefACR.LEVEL_ONE)
+    def get_current_user_acr():
         return g.user
 
     @app.get("/current-user-permission")
@@ -199,6 +209,35 @@ class TestAuthenticated:
             "id": user_id,
             "scope": ["openid", "required_scope"],
             "acr": FiefACR.LEVEL_ZERO,
+            "permissions": [],
+            "access_token": access_token,
+        }
+
+    def test_invalid_acr(self, test_client: FlaskClient, generate_access_token):
+        access_token = generate_access_token(encrypt=False, acr=FiefACR.LEVEL_ZERO)
+
+        response = test_client.get(
+            "/authenticated-acr", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == 403
+
+    def test_valid_acr(
+        self, test_client: FlaskClient, generate_access_token, user_id: str
+    ):
+        access_token = generate_access_token(encrypt=False, acr=FiefACR.LEVEL_ONE)
+
+        response = test_client.get(
+            "/authenticated-acr", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == 200
+
+        json = response.json
+        assert json == {
+            "id": user_id,
+            "scope": [],
+            "acr": FiefACR.LEVEL_ONE,
             "permissions": [],
             "access_token": access_token,
         }
@@ -354,6 +393,37 @@ class TestCurrentUser:
 
         response = test_client.get(
             "/current-user-scope", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == 200
+
+        json = response.json
+        assert json == {"sub": user_id}
+
+    def test_missing_acr(self, test_client: FlaskClient, generate_access_token):
+        access_token = generate_access_token(encrypt=False, acr=FiefACR.LEVEL_ZERO)
+
+        response = test_client.get(
+            "/current-user-acr", headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        assert response.status_code == 403
+
+    def test_valid_acr(
+        self,
+        test_client: FlaskClient,
+        generate_access_token,
+        mock_api_requests: respx.MockRouter,
+        user_id: str,
+    ):
+        mock_api_requests.get("/userinfo").return_value = Response(
+            200, json={"sub": user_id}
+        )
+
+        access_token = generate_access_token(encrypt=False, acr=FiefACR.LEVEL_ONE)
+
+        response = test_client.get(
+            "/current-user-acr", headers={"Authorization": f"Bearer {access_token}"}
         )
 
         assert response.status_code == 200

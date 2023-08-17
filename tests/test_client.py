@@ -12,6 +12,7 @@ from pytest_mock import MockerFixture
 
 from fief_client.client import (
     Fief,
+    FiefAccessTokenACRTooLow,
     FiefAccessTokenExpired,
     FiefAccessTokenInvalid,
     FiefAccessTokenMissingPermission,
@@ -57,6 +58,14 @@ def test_serializable_fief_token_response():
         json.dumps(token_response)
         == '{"access_token": "ACCESS_TOKEN", "id_token": "ID_TOKEN", "token_type": "bearer", "expires_in": 3600, "refresh_token": null}'
     )
+
+
+def test_fief_acr():
+    assert FiefACR.LEVEL_ZERO < FiefACR.LEVEL_ONE
+    assert FiefACR.LEVEL_ZERO <= FiefACR.LEVEL_ONE
+    assert FiefACR.LEVEL_ONE > FiefACR.LEVEL_ZERO
+    assert FiefACR.LEVEL_ONE >= FiefACR.LEVEL_ZERO
+    assert FiefACR.LEVEL_ZERO == FiefACR.LEVEL_ZERO
 
 
 class TestCustomVerifyCertParameters:
@@ -444,6 +453,11 @@ class TestValidateAccessToken:
                 "eyJhbGciOiJSUzI1NiJ9.e30.RmKxjgPljzJL_-Yp9oBJIvNejvES_pnTeZBDvptYcdWm4Ze9D6FlM8RFJ5-ZJ3O-HXlWylVXiGAE_wdSGXehSaENUN3Mj91j5OfiXGrtBGSiEiCtC9HYKCi6xf6xmcEPoTbtBVi38a9OARoJlpTJ5T4BbmqIUR8R06sqo3zTkwk48wPmYtk_OPgMv4c8tNyHF17dRe1JM_ix-m7V1Nv_2DHLMRgMXdsWkl0RCcAFQwqCTXU4UxWSoXp6CB0-Ybkq-P5KyXIXy0b15qG8jfgCrFHqFhN3hpyvL4Zza_EkXJaCkB5v-oztlHS6gTGb3QgFqppW3JM6TJnDKslGRPDsjg"
             )
 
+    def test_invalid_acr_claim(self, fief_client: Fief, generate_access_token):
+        access_token = generate_access_token(encrypt=False, acr="INVALID_ACR")
+        with pytest.raises(FiefAccessTokenInvalid):
+            fief_client.validate_access_token(access_token)
+
     def test_expired(self, fief_client: Fief, generate_access_token):
         access_token = generate_access_token(encrypt=False, exp=0)
         with pytest.raises(FiefAccessTokenExpired):
@@ -467,6 +481,26 @@ class TestValidateAccessToken:
             "id": uuid.UUID(user_id),
             "scope": ["openid", "offline_access"],
             "acr": FiefACR.LEVEL_ZERO,
+            "permissions": [],
+            "access_token": access_token,
+        }
+
+    def test_invalid_acr(self, fief_client: Fief, generate_access_token):
+        access_token = generate_access_token(encrypt=False, acr=FiefACR.LEVEL_ZERO)
+        with pytest.raises(FiefAccessTokenACRTooLow):
+            fief_client.validate_access_token(
+                access_token, required_acr=FiefACR.LEVEL_ONE
+            )
+
+    def test_valid_acr(self, fief_client: Fief, generate_access_token, user_id: str):
+        access_token = generate_access_token(encrypt=False, acr=FiefACR.LEVEL_ONE)
+        info = fief_client.validate_access_token(
+            access_token, required_acr=FiefACR.LEVEL_ONE
+        )
+        assert info == {
+            "id": uuid.UUID(user_id),
+            "scope": [],
+            "acr": FiefACR.LEVEL_ONE,
             "permissions": [],
             "access_token": access_token,
         }
@@ -545,6 +579,32 @@ class TestValidateAccessToken:
             "id": uuid.UUID(user_id),
             "scope": ["openid", "offline_access"],
             "acr": FiefACR.LEVEL_ZERO,
+            "permissions": [],
+            "access_token": access_token,
+        }
+
+    @pytest.mark.asyncio
+    async def test_async_invalid_acr(
+        self, fief_async_client: FiefAsync, generate_access_token
+    ):
+        access_token = generate_access_token(encrypt=False, acr=FiefACR.LEVEL_ZERO)
+        with pytest.raises(FiefAccessTokenACRTooLow):
+            await fief_async_client.validate_access_token(
+                access_token, required_acr=FiefACR.LEVEL_ONE
+            )
+
+    @pytest.mark.asyncio
+    async def test_async_valid_acr(
+        self, fief_async_client: FiefAsync, generate_access_token, user_id: str
+    ):
+        access_token = generate_access_token(encrypt=False, acr=FiefACR.LEVEL_ONE)
+        info = await fief_async_client.validate_access_token(
+            access_token, required_acr=FiefACR.LEVEL_ONE
+        )
+        assert info == {
+            "id": uuid.UUID(user_id),
+            "scope": [],
+            "acr": FiefACR.LEVEL_ONE,
             "permissions": [],
             "access_token": access_token,
         }
