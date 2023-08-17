@@ -651,7 +651,7 @@ class TestUpdateUserMethods:
         fief_client: Fief,
         mock_api_requests: respx.MockRouter,
     ):
-        route = mock_api_requests.patch(endpoint)
+        route = mock_api_requests.route(path=endpoint)
         route.return_value = Response(400, json={"detail": "error"})
 
         with pytest.raises(FiefRequestError) as excinfo:
@@ -669,7 +669,7 @@ class TestUpdateUserMethods:
         mock_api_requests: respx.MockRouter,
         user_id: str,
     ):
-        mock_api_requests.patch(endpoint).return_value = Response(
+        mock_api_requests.route(path=endpoint).return_value = Response(
             200, json={"sub": user_id}
         )
 
@@ -686,7 +686,7 @@ class TestUpdateUserMethods:
         fief_async_client: FiefAsync,
         mock_api_requests: respx.MockRouter,
     ):
-        route = mock_api_requests.patch(endpoint)
+        route = mock_api_requests.route(path=endpoint)
         route.return_value = Response(400, json={"detail": "error"})
 
         with pytest.raises(FiefRequestError) as excinfo:
@@ -705,7 +705,7 @@ class TestUpdateUserMethods:
         mock_api_requests: respx.MockRouter,
         user_id: str,
     ):
-        mock_api_requests.patch(endpoint).return_value = Response(
+        mock_api_requests.route(path=endpoint).return_value = Response(
             200, json={"sub": user_id}
         )
 

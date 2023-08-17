@@ -422,7 +422,7 @@ class BaseFief:
         code: str,
     ) -> httpx.Request:
         return client.build_request(
-            "PATCH",
+            "POST",
             endpoint,
             headers={"Authorization": f"Bearer {access_token}"},
             json={"code": code},
