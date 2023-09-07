@@ -122,6 +122,13 @@ class TestAuthenticated:
 
         assert response.status_code == 401
 
+    def test_invalid_token(self, test_client: FlaskClient):
+        response = test_client.get(
+            "/authenticated", headers={"Authorization": "Bearer INVALID_TOKEN"}
+        )
+
+        assert response.status_code == 401
+
     def test_expired_token(self, test_client: FlaskClient, generate_access_token):
         access_token = generate_access_token(encrypt=False, exp=0)
 

@@ -441,6 +441,10 @@ class TestAuthRefreshToken:
 
 
 class TestValidateAccessToken:
+    def test_invalid_token(self, fief_client: Fief):
+        with pytest.raises(FiefAccessTokenInvalid):
+            fief_client.validate_access_token("INVALID_TOKEN")
+
     def test_invalid_signature(self, fief_client: Fief):
         with pytest.raises(FiefAccessTokenInvalid):
             fief_client.validate_access_token(
@@ -530,6 +534,11 @@ class TestValidateAccessToken:
             "permissions": ["castles:read", "castles:create"],
             "access_token": access_token,
         }
+
+    @pytest.mark.asyncio
+    async def test_async_invalid_token(self, fief_async_client: FiefAsync):
+        with pytest.raises(FiefAccessTokenInvalid):
+            await fief_async_client.validate_access_token("INVALID_TOKEN")
 
     @pytest.mark.asyncio
     async def test_async_invalid_signature(self, fief_async_client: FiefAsync):

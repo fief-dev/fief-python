@@ -321,9 +321,7 @@ class BaseFief:
 
         except jwt.JWTExpired as e:
             raise FiefAccessTokenExpired() from e
-        except jwt.JWException as e:
-            raise FiefAccessTokenInvalid() from e
-        except KeyError as e:
+        except (jwt.JWException, KeyError, ValueError) as e:
             raise FiefAccessTokenInvalid() from e
 
     def _decode_id_token(

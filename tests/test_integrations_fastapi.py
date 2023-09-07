@@ -166,6 +166,13 @@ class TestAuthenticated:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    async def test_invalid_token(self, test_client: httpx.AsyncClient):
+        response = await test_client.get(
+            "/authenticated", headers={"Authorization": "Bearer INVALID_TOKEN"}
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
     async def test_expired_token(
         self, test_client: httpx.AsyncClient, generate_access_token
     ):
