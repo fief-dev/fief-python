@@ -164,7 +164,7 @@ class TestAuthURL:
         )
         assert (
             authorize_url
-            == f"https://bretagne.fief.dev/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=https%3A%2F%2Fwww.bretagne.duchy%2Fcallback{expected_params}"
+            == f"/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=https%3A%2F%2Fwww.bretagne.duchy%2Fcallback{expected_params}"
         )
 
         assert mock_api_requests.calls.last is not None
@@ -225,7 +225,7 @@ class TestAuthURL:
         )
         assert (
             authorize_url
-            == f"https://bretagne.fief.dev/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=https%3A%2F%2Fwww.bretagne.duchy%2Fcallback{expected_params}"
+            == f"/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=https%3A%2F%2Fwww.bretagne.duchy%2Fcallback{expected_params}"
         )
 
         assert mock_api_requests.calls.last is not None
