@@ -252,8 +252,8 @@ class FiefAuth:
 
         try:
             code = code_queue.get(block=False)
-        except queue.Empty:
-            raise FiefAuthAuthorizationCodeMissingError()
+        except queue.Empty as e:
+            raise FiefAuthAuthorizationCodeMissingError() from e
 
         spinner.text = "Getting a token..."
 

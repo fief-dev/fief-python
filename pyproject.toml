@@ -1,6 +1,3 @@
-[tool.isort]
-profile = "black"
-
 [[tool.mypy.overrides]]
 module = "jwcrypto.*"
 ignore_missing_imports = true
@@ -11,7 +8,7 @@ ignore_missing_imports = true
 
 [tool.ruff]
 target-version = "py38"
-extend-select = ["I", "UP"]
+extend-select = ["I", "UP", "TRY"]
 ignore = ["E501"]
 per-file-ignores = {"tests/test_init.py" = ["F401"]}
 
@@ -38,7 +35,6 @@ features = [
   "cli",
 ]
 dependencies = [
-  "black",
   "coverage[toml]",
   "greenlet",
   "mypy",
@@ -48,7 +44,6 @@ dependencies = [
   "pytest-mock",
   "respx",
   "ruff",
-  "tryceratops",
   "uvicorn[standard]",
 ]
 
@@ -61,12 +56,12 @@ dependencies = [
 test = "pytest --cov fief_client/ --cov-report=term-missing"
 test-cov-xml = "pytest --cov fief_client/ --cov-report=xml"
 lint = [
-  "black . ",
+  "ruff format . ",
   "ruff --fix .",
   "mypy fief_client/",
 ]
 lint-check = [
-  "black --check .",
+  "ruff format --check .",
   "ruff .",
   "mypy fief_client/",
 ]
