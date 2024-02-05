@@ -1,7 +1,8 @@
+import contextlib
 import uuid
 from datetime import datetime, timezone
 from os import path
-from typing import Callable, Generator, List
+from typing import Callable, ContextManager, Generator, List, Protocol
 
 import pytest
 import pytest_asyncio
@@ -98,27 +99,47 @@ def encrypted_id_token(generate_token: Callable[..., str]) -> str:
     return generate_token(encrypt=True)
 
 
+class GetAPIRequestsMock(Protocol):
+    def __call__(
+        self, *, hostname: str = "https://bretagne.fief.dev", path_prefix: str = ""
+    ) -> ContextManager[respx.MockRouter]:
+        ...
+
+
+@pytest_asyncio.fixture(scope="module")
+def get_api_requests_mock(signature_key: jwk.JWK) -> GetAPIRequestsMock:
+    @contextlib.contextmanager
+    def _get_api_requests_mock(
+        *, hostname: str = "https://bretagne.fief.dev", path_prefix: str = ""
+    ) -> Generator[respx.MockRouter, None, None]:
+        with respx.mock(assert_all_mocked=True, assert_all_called=False) as respx_mock:
+            openid_configuration_route = respx_mock.get(
+                f"{path_prefix}/.well-known/openid-configuration"
+            )
+            openid_configuration_route.return_value = Response(
+                200,
+                json={
+                    "authorization_endpoint": f"{hostname}{path_prefix}/authorize",
+                    "token_endpoint": f"{hostname}{path_prefix}/token",
+                    "userinfo_endpoint": f"{hostname}{path_prefix}/userinfo",
+                    "jwks_uri": f"{hostname}{path_prefix}/.well-known/jwks.json",
+                },
+            )
+
+            jwks_route = respx_mock.get(f"{path_prefix}/.well-known/jwks.json")
+            jwks_route.return_value = Response(
+                200,
+                json={"keys": [signature_key.export(private_key=False, as_dict=True)]},
+            )
+
+            yield respx_mock
+
+    return _get_api_requests_mock
+
+
 @pytest_asyncio.fixture(scope="module", autouse=True)
 def mock_api_requests(
-    signature_key: jwk.JWK,
+    get_api_requests_mock: GetAPIRequestsMock,
 ) -> Generator[respx.MockRouter, None, None]:
-    HOSTNAME = "https://bretagne.fief.dev"
-
-    with respx.mock(assert_all_mocked=True, assert_all_called=False) as respx_mock:
-        openid_configuration_route = respx_mock.get("/.well-known/openid-configuration")
-        openid_configuration_route.return_value = Response(
-            200,
-            json={
-                "authorization_endpoint": f"{HOSTNAME}/authorize",
-                "token_endpoint": f"{HOSTNAME}/token",
-                "userinfo_endpoint": f"{HOSTNAME}/userinfo",
-                "jwks_uri": f"{HOSTNAME}/.well-known/jwks.json",
-            },
-        )
-
-        jwks_route = respx_mock.get("/.well-known/jwks.json")
-        jwks_route.return_value = Response(
-            200, json={"keys": [signature_key.export(private_key=False, as_dict=True)]}
-        )
-
+    with get_api_requests_mock() as respx_mock:
         yield respx_mock

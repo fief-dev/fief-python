@@ -24,11 +24,17 @@ from fief_client.client import (
     FiefTokenResponse,
 )
 from fief_client.crypto import get_validation_hash
+from tests.conftest import GetAPIRequestsMock
 
 
 @pytest.fixture(scope="module")
 def fief_client() -> Fief:
     return Fief("https://bretagne.fief.dev", "CLIENT_ID", "CLIENT_SECRET")
+
+
+@pytest.fixture(scope="module")
+def fief_client_tenant() -> Fief:
+    return Fief("https://bretagne.fief.dev/secondary", "CLIENT_ID", "CLIENT_SECRET")
 
 
 @pytest.fixture(scope="module")
@@ -235,6 +241,30 @@ class TestAuthURL:
 
         assert request.url.host == request.headers["Host"]
 
+    def test_authorization_url_tenant(
+        self, fief_client_tenant: Fief, mock_api_requests: respx.MockRouter
+    ):
+        openid_configuration_route = mock_api_requests.get(
+            "/secondary/.well-known/openid-configuration"
+        )
+        openid_configuration_route.return_value = Response(
+            200,
+            json={
+                "authorization_endpoint": "https://bretagne.fief.dev/secondary/authorize",
+                "token_endpoint": "https://bretagne.fief.dev/secondary/token",
+                "userinfo_endpoint": "https://bretagne.fief.dev/secondary/userinfo",
+                "jwks_uri": "https://bretagne.fief.dev/secondary/.well-known/jwks.json",
+            },
+        )
+
+        authorize_url = fief_client_tenant.auth_url(
+            "https://www.bretagne.duchy/callback"
+        )
+        assert (
+            authorize_url
+            == "https://bretagne.fief.dev/secondary/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=https%3A%2F%2Fwww.bretagne.duchy%2Fcallback"
+        )
+
 
 class TestAuthCallback:
     def test_error_response(
@@ -338,6 +368,44 @@ class TestAuthCallback:
 
         assert isinstance(userinfo, dict)
         assert userinfo["sub"] == user_id
+
+    def test_valid_response_tenant(
+        self,
+        fief_client_tenant: Fief,
+        get_api_requests_mock: GetAPIRequestsMock,
+        access_token: str,
+        signed_id_token: str,
+        user_id: str,
+    ):
+        with get_api_requests_mock(path_prefix="/secondary") as mock_api_requests:
+            token_route = mock_api_requests.post("/secondary/token")
+            token_route.return_value = Response(
+                200,
+                json={
+                    "access_token": access_token,
+                    "id_token": signed_id_token,
+                    "token_type": "bearer",
+                },
+            )
+
+            token_response, userinfo = fief_client_tenant.auth_callback(
+                "CODE",
+                "https://www.bretagne.duchy/callback",
+                code_verifier="CODE_VERIFIER",
+            )
+
+            token_route_call = token_route.calls.last
+            assert token_route_call is not None
+
+            request_data = token_route_call.request.content.decode("utf-8")
+            assert "client_id" in request_data
+            assert "client_secret" in request_data
+
+            assert token_response["access_token"] == access_token
+            assert token_response["id_token"] == signed_id_token
+
+            assert isinstance(userinfo, dict)
+            assert userinfo["sub"] == user_id
 
 
 class TestAuthRefreshToken:
