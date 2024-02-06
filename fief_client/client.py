@@ -3,7 +3,7 @@ import json
 import uuid
 from enum import Enum
 from typing import Any, Dict, List, Mapping, Optional, Tuple, TypedDict, Union
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import httpx
 from httpx._types import CertTypes, VerifyTypes
@@ -253,8 +253,10 @@ class BaseFief:
         rather stick to the host specified on the client configuration.
         """
         if not absolute:
-            issuer = openid_configuration["issuer"]
-            return openid_configuration[field].split(issuer)[1]
+            (scheme, netloc, *components) = urlsplit(self.base_url)
+            host = self.host if self.host is not None else netloc
+            host_base_url = urlunsplit((scheme, host, *components))
+            return openid_configuration[field].split(host_base_url)[1]
         return openid_configuration[field]
 
     def _auth_url(
