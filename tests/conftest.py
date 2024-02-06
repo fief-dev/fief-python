@@ -119,6 +119,7 @@ def get_api_requests_mock(signature_key: jwk.JWK) -> GetAPIRequestsMock:
             openid_configuration_route.return_value = Response(
                 200,
                 json={
+                    "issuer": f"{hostname}{path_prefix}",
                     "authorization_endpoint": f"{hostname}{path_prefix}/authorize",
                     "token_endpoint": f"{hostname}{path_prefix}/token",
                     "userinfo_endpoint": f"{hostname}{path_prefix}/userinfo",
@@ -132,7 +133,9 @@ def get_api_requests_mock(signature_key: jwk.JWK) -> GetAPIRequestsMock:
                 json={"keys": [signature_key.export(private_key=False, as_dict=True)]},
             )
 
+            print("YIELD")
             yield respx_mock
+        print("RESET")
 
     return _get_api_requests_mock
 

@@ -242,24 +242,13 @@ class TestAuthURL:
         assert request.url.host == request.headers["Host"]
 
     def test_authorization_url_tenant(
-        self, fief_client_tenant: Fief, mock_api_requests: respx.MockRouter
+        self, fief_client_tenant: Fief, get_api_requests_mock: GetAPIRequestsMock
     ):
-        openid_configuration_route = mock_api_requests.get(
-            "/secondary/.well-known/openid-configuration"
-        )
-        openid_configuration_route.return_value = Response(
-            200,
-            json={
-                "authorization_endpoint": "https://bretagne.fief.dev/secondary/authorize",
-                "token_endpoint": "https://bretagne.fief.dev/secondary/token",
-                "userinfo_endpoint": "https://bretagne.fief.dev/secondary/userinfo",
-                "jwks_uri": "https://bretagne.fief.dev/secondary/.well-known/jwks.json",
-            },
-        )
+        with get_api_requests_mock(path_prefix="/secondary"):
+            authorize_url = fief_client_tenant.auth_url(
+                "https://www.bretagne.duchy/callback"
+            )
 
-        authorize_url = fief_client_tenant.auth_url(
-            "https://www.bretagne.duchy/callback"
-        )
         assert (
             authorize_url
             == "https://bretagne.fief.dev/secondary/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=https%3A%2F%2Fwww.bretagne.duchy%2Fcallback"

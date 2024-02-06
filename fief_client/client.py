@@ -253,7 +253,8 @@ class BaseFief:
         rather stick to the host specified on the client configuration.
         """
         if not absolute:
-            return openid_configuration[field].split(self.base_url)[1]
+            issuer = openid_configuration["issuer"]
+            return openid_configuration[field].split(issuer)[1]
         return openid_configuration[field]
 
     def _auth_url(
