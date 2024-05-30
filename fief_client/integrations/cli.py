@@ -10,7 +10,8 @@ import typing
 import urllib.parse
 import webbrowser
 
-from halo import Halo
+from yaspin import yaspin
+from yaspin.spinners import Spinners
 
 from fief_client import (
     Fief,
@@ -233,8 +234,9 @@ class FiefAuth:
         )
         webbrowser.open(authorization_url)
 
-        spinner = Halo(
-            text="Please complete authentication in your browser.", spinner="dots"
+        spinner = yaspin(
+            text="Please complete authentication in your browser.",
+            spinner=Spinners.dots,
         )
         spinner.start()
 
@@ -256,14 +258,14 @@ class FiefAuth:
         except queue.Empty as e:
             raise FiefAuthAuthorizationCodeMissingError() from e
 
-        spinner.text = "Getting a token..."
+        spinner.write = "Getting a token..."
 
         tokens, userinfo = self.client.auth_callback(
             code, redirect_uri, code_verifier=code_verifier
         )
         self._save_credentials(tokens, userinfo)
 
-        spinner.succeed("Successfully authenticated")
+        spinner.ok("Successfully authenticated")
 
         return tokens, userinfo
 

@@ -47,6 +47,7 @@ dependencies = [
   "pytest-mock",
   "respx",
   "ruff",
+  "yaspin",
   "uvicorn[standard]",
 ]
 
