@@ -258,7 +258,7 @@ class FiefAuth:
         except queue.Empty as e:
             raise FiefAuthAuthorizationCodeMissingError() from e
 
-        spinner.write = "Getting a token..."
+        spinner.text = "Getting a token..."
 
         tokens, userinfo = self.client.auth_callback(
             code, redirect_uri, code_verifier=code_verifier
