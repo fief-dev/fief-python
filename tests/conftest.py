@@ -102,8 +102,7 @@ def encrypted_id_token(generate_token: Callable[..., str]) -> str:
 class GetAPIRequestsMock(Protocol):
     def __call__(
         self, *, hostname: str = "https://bretagne.fief.dev", path_prefix: str = ""
-    ) -> ContextManager[respx.MockRouter]:
-        ...
+    ) -> ContextManager[respx.MockRouter]: ...
 
 
 @pytest_asyncio.fixture(scope="module")

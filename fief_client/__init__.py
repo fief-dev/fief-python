@@ -1,4 +1,5 @@
 "Fief client for Python."
+
 from fief_client.client import (
     Fief,
     FiefAccessTokenACRTooLow,

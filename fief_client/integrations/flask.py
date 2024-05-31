@@ -1,4 +1,5 @@
 """Flask integration."""
+
 import uuid
 from functools import wraps
 from typing import Callable, List, Optional

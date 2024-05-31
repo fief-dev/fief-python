@@ -1,4 +1,5 @@
 """CLI integration."""
+
 import functools
 import http
 import http.server

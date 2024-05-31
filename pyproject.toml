@@ -31,6 +31,7 @@ commit_extra_args = ["-e"]
 path = "fief_client/__init__.py"
 
 [tool.hatch.envs.default]
+installer = "uv"
 features = [
   "fastapi",
   "flask",
@@ -59,12 +60,12 @@ test = "pytest --cov fief_client/ --cov-report=term-missing"
 test-cov-xml = "pytest --cov fief_client/ --cov-report=xml"
 lint = [
   "ruff format . ",
-  "ruff --fix .",
+  "ruff check --fix .",
   "mypy fief_client/",
 ]
 lint-check = [
   "ruff format --check .",
-  "ruff .",
+  "ruff check .",
   "mypy fief_client/",
 ]
 

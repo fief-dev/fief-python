@@ -1,4 +1,5 @@
 """FastAPI integration."""
+
 import uuid
 from inspect import Parameter, Signature, isawaitable
 from typing import (
