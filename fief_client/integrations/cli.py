@@ -234,38 +234,36 @@ class FiefAuth:
         )
         webbrowser.open(authorization_url)
 
-        spinner = yaspin(
+        with yaspin(
             text="Please complete authentication in your browser.",
             spinner=Spinners.dots,
-        )
-        spinner.start()
+        ) as spinner:
+            code_queue: queue.Queue[str] = queue.Queue()
+            server = CallbackHTTPServer(
+                server_address,
+                functools.partial(
+                    CallbackHTTPRequestHandler,
+                    queue=code_queue,
+                    render_success_page=self.render_success_page,
+                    render_error_page=self.render_error_page,
+                ),
+            )
 
-        code_queue: queue.Queue[str] = queue.Queue()
-        server = CallbackHTTPServer(
-            server_address,
-            functools.partial(
-                CallbackHTTPRequestHandler,
-                queue=code_queue,
-                render_success_page=self.render_success_page,
-                render_error_page=self.render_error_page,
-            ),
-        )
+            server.serve_forever()
 
-        server.serve_forever()
+            try:
+                code = code_queue.get(block=False)
+            except queue.Empty as e:
+                raise FiefAuthAuthorizationCodeMissingError() from e
 
-        try:
-            code = code_queue.get(block=False)
-        except queue.Empty as e:
-            raise FiefAuthAuthorizationCodeMissingError() from e
+            spinner.text = "Getting a token..."
 
-        spinner.text = "Getting a token..."
+            tokens, userinfo = self.client.auth_callback(
+                code, redirect_uri, code_verifier=code_verifier
+            )
+            self._save_credentials(tokens, userinfo)
 
-        tokens, userinfo = self.client.auth_callback(
-            code, redirect_uri, code_verifier=code_verifier
-        )
-        self._save_credentials(tokens, userinfo)
-
-        spinner.ok("Successfully authenticated")
+            spinner.ok("Successfully authenticated")
 
         return tokens, userinfo
 
