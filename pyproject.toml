@@ -3,7 +3,7 @@ module = "jwcrypto.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "halo.*"
+module = "yaspin.*"
 ignore_missing_imports = true
 
 [tool.ruff]
@@ -113,7 +113,7 @@ flask = [
 ]
 
 cli = [
-  "halo",
+  "yaspin",
 ]
 
 [project.urls]
