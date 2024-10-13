@@ -145,7 +145,7 @@ def fastapi_app(fief_client: FiefClientClass, scheme: SecurityBase) -> FastAPI:
 @pytest_asyncio.fixture
 async def test_client(fastapi_app: FastAPI) -> AsyncGenerator[httpx.AsyncClient, None]:
     async with httpx.AsyncClient(
-        app=fastapi_app, base_url="http://api.bretagne.duchy"
+        transport=httpx.ASGITransport(fastapi_app), base_url="http://api.bretagne.duchy"
     ) as test_client:
         yield test_client
 
