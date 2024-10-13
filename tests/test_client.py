@@ -397,6 +397,36 @@ class TestAuthCallback:
             assert isinstance(userinfo, dict)
             assert userinfo["sub"] == user_id
 
+    def test_no_code_verifier(
+        self,
+        fief_client: Fief,
+        mock_api_requests: respx.MockRouter,
+        access_token: str,
+        signed_id_token: str,
+        user_id: str,
+    ):
+        token_route = mock_api_requests.post("/token")
+        token_route.return_value = Response(
+            200,
+            json={
+                "access_token": access_token,
+                "id_token": signed_id_token,
+                "token_type": "bearer",
+            },
+        )
+
+        token_response, userinfo = fief_client.auth_callback(
+            "CODE", "https://www.bretagne.duchy/callback"
+        )
+
+        token_route_call = token_route.calls.last
+        assert token_route_call is not None
+
+        request_data = token_route_call.request.content.decode("utf-8")
+        assert "client_id" in request_data
+        assert "client_secret" in request_data
+        assert "code_verifier" not in request_data
+
 
 class TestAuthRefreshToken:
     def test_error_response(

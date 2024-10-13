@@ -395,8 +395,9 @@ class BaseFief:
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": redirect_uri,
-            "code_verifier": code_verifier,
         }
+        if code_verifier is not None:
+            data["code_verifier"] = code_verifier
         if self.client_secret is not None:
             data["client_secret"] = self.client_secret
         return client.build_request("POST", endpoint, data=data)
