@@ -7,7 +7,7 @@ module = "yaspin.*"
 ignore_missing_imports = true
 
 [tool.ruff]
-target-version = "py38"
+target-version = "py39"
 
 [tool.ruff.lint]
 extend-select = ["I", "UP", "TRY"]
@@ -88,7 +88,6 @@ license = "MIT"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -96,7 +95,7 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
 ]
 dynamic = ["version"]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "httpx >=0.21.3,<0.28.0",
     "jwcrypto >=1.4,<2.0.0",

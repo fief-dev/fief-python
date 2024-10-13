@@ -1,7 +1,8 @@
 import concurrent.futures
 import json
 import tempfile
-from typing import BinaryIO, Generator
+from collections.abc import Generator
+from typing import BinaryIO
 from unittest.mock import MagicMock
 
 import httpx

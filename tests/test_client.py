@@ -1,7 +1,8 @@
 import contextlib
 import json
 import uuid
-from typing import Dict, List, Mapping, Optional, Tuple
+from collections.abc import Mapping
+from typing import Optional
 
 import httpx
 import pytest
@@ -150,7 +151,7 @@ class TestAuthURL:
     def test_authorization_url(
         self,
         state: Optional[str],
-        scope: Optional[List[str]],
+        scope: Optional[list[str]],
         code_challenge: Optional[str],
         code_challenge_method: Optional[str],
         lang: Optional[str],
@@ -211,7 +212,7 @@ class TestAuthURL:
     async def test_authorization_url_async(
         self,
         state: Optional[str],
-        scope: Optional[List[str]],
+        scope: Optional[list[str]],
         code_challenge: Optional[str],
         code_challenge_method: Optional[str],
         lang: Optional[str],
@@ -773,7 +774,7 @@ class TestUpdateUserMethods:
         self,
         endpoint: str,
         method_name: str,
-        args: Tuple,
+        args: tuple,
         fief_client: Fief,
         mock_api_requests: respx.MockRouter,
     ):
@@ -790,7 +791,7 @@ class TestUpdateUserMethods:
         self,
         endpoint: str,
         method_name: str,
-        args: Tuple,
+        args: tuple,
         fief_client: Fief,
         mock_api_requests: respx.MockRouter,
         user_id: str,
@@ -808,7 +809,7 @@ class TestUpdateUserMethods:
         self,
         endpoint: str,
         method_name: str,
-        args: Tuple,
+        args: tuple,
         fief_async_client: FiefAsync,
         mock_api_requests: respx.MockRouter,
     ):
@@ -826,7 +827,7 @@ class TestUpdateUserMethods:
         self,
         endpoint: str,
         method_name: str,
-        args: Tuple,
+        args: tuple,
         fief_async_client: FiefAsync,
         mock_api_requests: respx.MockRouter,
         user_id: str,
@@ -932,7 +933,7 @@ class TestDecodeIdToken:
     )
     def test_signed_at_hash_c_hash_invalid(
         self,
-        claims: Dict[str, str],
+        claims: dict[str, str],
         fief_client: Fief,
         signature_key: jwk.JWK,
         generate_token,

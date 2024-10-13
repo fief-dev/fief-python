@@ -1,5 +1,6 @@
 import uuid
-from typing import AsyncGenerator, Dict, List, Optional
+from collections.abc import AsyncGenerator
+from typing import Optional
 
 import httpx
 import pytest
@@ -27,7 +28,7 @@ def fief_client(request) -> FiefClientClass:
     return fief_class("https://bretagne.fief.dev", "CLIENT_ID", "CLIENT_SECRET")
 
 
-schemes: List[SecurityBase] = [
+schemes: list[SecurityBase] = [
     HTTPBearer(auto_error=False),
     OAuth2PasswordBearer("/token", auto_error=False),
 ]
@@ -42,7 +43,7 @@ def scheme(request) -> SecurityBase:
 def fastapi_app(fief_client: FiefClientClass, scheme: SecurityBase) -> FastAPI:
     class MemoryUserinfoCache:
         def __init__(self) -> None:
-            self.storage: Dict[uuid.UUID, FiefUserInfo] = {}
+            self.storage: dict[uuid.UUID, FiefUserInfo] = {}
 
         async def get(self, user_id: uuid.UUID) -> Optional[FiefUserInfo]:
             return self.storage.get(user_id)

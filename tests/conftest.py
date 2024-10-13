@@ -1,8 +1,9 @@
 import contextlib
 import uuid
+from collections.abc import Generator
 from datetime import datetime, timezone
 from os import path
-from typing import Callable, ContextManager, Generator, List, Protocol
+from typing import Callable, Protocol
 
 import pytest
 import pytest_asyncio
@@ -73,7 +74,7 @@ def generate_access_token(generate_token: Callable[..., str]):
         encrypt: bool,
         *,
         scope: str = "",
-        permissions: List[str] = [],
+        permissions: list[str] = [],
         acr: FiefACR = FiefACR.LEVEL_ZERO,
         **kwargs,
     ) -> str:
@@ -102,7 +103,7 @@ def encrypted_id_token(generate_token: Callable[..., str]) -> str:
 class GetAPIRequestsMock(Protocol):
     def __call__(
         self, *, hostname: str = "https://bretagne.fief.dev", path_prefix: str = ""
-    ) -> ContextManager[respx.MockRouter]: ...
+    ) -> contextlib.AbstractContextManager[respx.MockRouter]: ...
 
 
 @pytest_asyncio.fixture(scope="module")

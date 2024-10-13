@@ -1,5 +1,6 @@
 import uuid
-from typing import Generator, Optional
+from collections.abc import Generator
+from typing import Optional
 
 import pytest
 import respx

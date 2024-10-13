@@ -1,13 +1,10 @@
 """FastAPI integration."""
 
 import uuid
+from collections.abc import AsyncGenerator, Coroutine, Generator
 from inspect import Parameter, Signature, isawaitable
 from typing import (
-    AsyncGenerator,
     Callable,
-    Coroutine,
-    Generator,
-    List,
     Optional,
     Protocol,
     TypeVar,
@@ -126,9 +123,9 @@ class FiefAuth:
     def authenticated(
         self,
         optional: bool = False,
-        scope: Optional[List[str]] = None,
+        scope: Optional[list[str]] = None,
         acr: Optional[FiefACR] = None,
-        permissions: Optional[List[str]] = None,
+        permissions: Optional[list[str]] = None,
     ):
         """
         Return a FastAPI dependency to check if a request is authenticated.
@@ -198,9 +195,9 @@ class FiefAuth:
     def current_user(
         self,
         optional: bool = False,
-        scope: Optional[List[str]] = None,
+        scope: Optional[list[str]] = None,
         acr: Optional[FiefACR] = None,
-        permissions: Optional[List[str]] = None,
+        permissions: Optional[list[str]] = None,
         refresh: bool = False,
     ):
         """
@@ -296,7 +293,7 @@ class FiefAuth:
         with a dynamic security scheme dependency at runtime.
         This way, it's detected by the OpenAPI generator.
         """
-        parameters: List[Parameter] = [
+        parameters: list[Parameter] = [
             Parameter(
                 name="request",
                 kind=Parameter.POSITIONAL_OR_KEYWORD,
@@ -324,7 +321,7 @@ class FiefAuth:
         with a dynamic security scheme dependency at runtime.
         This way, it's detected by the OpenAPI generator.
         """
-        parameters: List[Parameter] = [
+        parameters: list[Parameter] = [
             Parameter(
                 name="access_token_info",
                 kind=Parameter.POSITIONAL_OR_KEYWORD,

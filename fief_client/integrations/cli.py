@@ -179,13 +179,13 @@ class FiefAuth:
 
     def authorize(
         self,
-        server_address: typing.Tuple[str, int] = ("localhost", 51562),
+        server_address: tuple[str, int] = ("localhost", 51562),
         redirect_path: str = "/callback",
         *,
-        scope: typing.Optional[typing.List[str]] = None,
+        scope: typing.Optional[list[str]] = None,
         lang: typing.Optional[str] = None,
         extras_params: typing.Optional[typing.Mapping[str, str]] = None,
-    ) -> typing.Tuple[FiefTokenResponse, FiefUserInfo]:
+    ) -> tuple[FiefTokenResponse, FiefUserInfo]:
         """
         Perform a user authentication with the Fief server.
 
@@ -217,7 +217,7 @@ class FiefAuth:
         """
         redirect_uri = f"http://{server_address[0]}:{server_address[1]}{redirect_path}"
 
-        scope_set: typing.Set[str] = set(scope) if scope else set()
+        scope_set: set[str] = set(scope) if scope else set()
         scope_set.add("openid")
         scope_set.add("offline_access")
 
@@ -304,7 +304,7 @@ class FiefAuth:
         </html>
         """
 
-    def render_error_page(self, query_params: typing.Dict[str, typing.Any]) -> str:
+    def render_error_page(self, query_params: dict[str, typing.Any]) -> str:
         """
         Generate the HTML page that'll be shown to the user when something goes wrong during redirection.
 

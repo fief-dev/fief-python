@@ -1,8 +1,9 @@
 import contextlib
 import json
 import uuid
+from collections.abc import Mapping
 from enum import Enum
-from typing import Any, Dict, List, Mapping, Optional, Tuple, TypedDict, Union
+from typing import Any, Optional, TypedDict, Union
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import httpx
@@ -87,11 +88,11 @@ class FiefAccessTokenInfo(TypedDict):
 
     id: uuid.UUID
     """ID of the user."""
-    scope: List[str]
+    scope: list[str]
     """List of granted scopes for this access token."""
     acr: FiefACR
     """Level of Authentication Context class Reference."""
-    permissions: List[str]
+    permissions: list[str]
     """List of [granted permissions](https://docs.fief.dev/getting-started/access-control/) for this user."""
     access_token: str
     """Access token you can use to call the Fief API."""
@@ -128,7 +129,7 @@ class FiefUserInfo(TypedDict):
     """
     ID of the [tenant](https://docs.fief.dev/getting-started/tenants/) associated to the user.
     """
-    fields: Dict[str, Any]
+    fields: dict[str, Any]
     """
     [User fields](https://docs.fief.dev/getting-started/user-fields/) values for this user, indexed by their slug.
     """
@@ -192,7 +193,7 @@ class BaseFief:
     encryption_key: Optional[jwk.JWK] = None
     """"""
 
-    _openid_configuration: Optional[Dict[str, Any]] = None
+    _openid_configuration: Optional[dict[str, Any]] = None
     _jwks: Optional[jwk.JWKSet] = None
 
     _verify: VerifyTypes
@@ -236,7 +237,7 @@ class BaseFief:
 
     def _get_endpoint_url(
         self,
-        openid_configuration: Dict[str, Any],
+        openid_configuration: dict[str, Any],
         field: str,
         *,
         absolute: bool = False,
@@ -261,11 +262,11 @@ class BaseFief:
 
     def _auth_url(
         self,
-        openid_configuration: Dict[str, Any],
+        openid_configuration: dict[str, Any],
         redirect_uri: str,
         *,
         state: Optional[str] = None,
-        scope: Optional[List[str]] = None,
+        scope: Optional[list[str]] = None,
         code_challenge: Optional[str] = None,
         code_challenge_method: Optional[str] = None,
         lang: Optional[str] = None,
@@ -303,9 +304,9 @@ class BaseFief:
         access_token: str,
         jwks: jwk.JWKSet,
         *,
-        required_scope: Optional[List[str]] = None,
+        required_scope: Optional[list[str]] = None,
         required_acr: Optional[FiefACR] = None,
-        required_permissions: Optional[List[str]] = None,
+        required_permissions: Optional[list[str]] = None,
     ) -> FiefAccessTokenInfo:
         try:
             decoded_token = jwt.JWT(jwt=access_token, algs=["RS256"], key=jwks)
@@ -325,7 +326,7 @@ class BaseFief:
                 if acr < required_acr:
                     raise FiefAccessTokenACRTooLow()
 
-            permissions: List[str] = claims["permissions"]
+            permissions: list[str] = claims["permissions"]
             if required_permissions is not None:
                 for required_permission in required_permissions:
                     if required_permission not in permissions:
@@ -406,7 +407,7 @@ class BaseFief:
         *,
         endpoint: str,
         refresh_token: str,
-        scope: Optional[List[str]] = None,
+        scope: Optional[list[str]] = None,
     ) -> httpx.Request:
         data = {
             "client_id": self.client_id,
@@ -433,7 +434,7 @@ class BaseFief:
         *,
         endpoint: str,
         access_token: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
     ) -> httpx.Request:
         return client.build_request(
             "PATCH",
@@ -521,7 +522,7 @@ class Fief(BaseFief):
         redirect_uri: str,
         *,
         state: Optional[str] = None,
-        scope: Optional[List[str]] = None,
+        scope: Optional[list[str]] = None,
         code_challenge: Optional[str] = None,
         code_challenge_method: Optional[str] = None,
         lang: Optional[str] = None,
@@ -561,7 +562,7 @@ class Fief(BaseFief):
 
     def auth_callback(
         self, code: str, redirect_uri: str, *, code_verifier: Optional[str] = None
-    ) -> Tuple[FiefTokenResponse, FiefUserInfo]:
+    ) -> tuple[FiefTokenResponse, FiefUserInfo]:
         """
         Return a `FiefTokenResponse` and `FiefUserInfo` in exchange of an authorization code.
 
@@ -589,8 +590,8 @@ class Fief(BaseFief):
         return token_response, userinfo
 
     def auth_refresh_token(
-        self, refresh_token: str, *, scope: Optional[List[str]] = None
-    ) -> Tuple[FiefTokenResponse, FiefUserInfo]:
+        self, refresh_token: str, *, scope: Optional[list[str]] = None
+    ) -> tuple[FiefTokenResponse, FiefUserInfo]:
         """
         Return fresh `FiefTokenResponse` and `FiefUserInfo` in exchange of a refresh token
 
@@ -632,9 +633,9 @@ class Fief(BaseFief):
         self,
         access_token: str,
         *,
-        required_scope: Optional[List[str]] = None,
+        required_scope: Optional[list[str]] = None,
         required_acr: Optional[FiefACR] = None,
-        required_permissions: Optional[List[str]] = None,
+        required_permissions: Optional[list[str]] = None,
     ) -> FiefAccessTokenInfo:
         """
         Check if an access token is valid and optionally that it has a required list of scopes,
@@ -726,7 +727,7 @@ class Fief(BaseFief):
 
             return response.json()
 
-    def update_profile(self, access_token: str, data: Dict[str, Any]) -> FiefUserInfo:
+    def update_profile(self, access_token: str, data: dict[str, Any]) -> FiefUserInfo:
         """
         Update user information with the Fief API using a valid access token.
 
@@ -877,7 +878,7 @@ class Fief(BaseFief):
         ) as client:
             yield client
 
-    def _get_openid_configuration(self) -> Dict[str, Any]:
+    def _get_openid_configuration(self) -> dict[str, Any]:
         if self._openid_configuration is not None:
             return self._openid_configuration
 
@@ -948,7 +949,7 @@ class FiefAsync(BaseFief):
         redirect_uri: str,
         *,
         state: Optional[str] = None,
-        scope: Optional[List[str]] = None,
+        scope: Optional[list[str]] = None,
         code_challenge: Optional[str] = None,
         code_challenge_method: Optional[str] = None,
         lang: Optional[str] = None,
@@ -988,7 +989,7 @@ class FiefAsync(BaseFief):
 
     async def auth_callback(
         self, code: str, redirect_uri: str, *, code_verifier: Optional[str] = None
-    ) -> Tuple[FiefTokenResponse, FiefUserInfo]:
+    ) -> tuple[FiefTokenResponse, FiefUserInfo]:
         """
         Return a `FiefTokenResponse` and `FiefUserInfo` in exchange of an authorization code.
 
@@ -1016,8 +1017,8 @@ class FiefAsync(BaseFief):
         return token_response, userinfo
 
     async def auth_refresh_token(
-        self, refresh_token: str, *, scope: Optional[List[str]] = None
-    ) -> Tuple[FiefTokenResponse, FiefUserInfo]:
+        self, refresh_token: str, *, scope: Optional[list[str]] = None
+    ) -> tuple[FiefTokenResponse, FiefUserInfo]:
         """
         Return fresh `FiefTokenResponse` and `FiefUserInfo` in exchange of a refresh token
 
@@ -1060,9 +1061,9 @@ class FiefAsync(BaseFief):
         self,
         access_token: str,
         *,
-        required_scope: Optional[List[str]] = None,
+        required_scope: Optional[list[str]] = None,
         required_acr: Optional[FiefACR] = None,
-        required_permissions: Optional[List[str]] = None,
+        required_permissions: Optional[list[str]] = None,
     ) -> FiefAccessTokenInfo:
         """
         Check if an access token is valid and optionally that it has a required list of scopes,
@@ -1155,7 +1156,7 @@ class FiefAsync(BaseFief):
             return response.json()
 
     async def update_profile(
-        self, access_token: str, data: Dict[str, Any]
+        self, access_token: str, data: dict[str, Any]
     ) -> FiefUserInfo:
         """
         Update user information with the Fief API using a valid access token.
@@ -1309,7 +1310,7 @@ class FiefAsync(BaseFief):
         ) as client:
             yield client
 
-    async def _get_openid_configuration(self) -> Dict[str, Any]:
+    async def _get_openid_configuration(self) -> dict[str, Any]:
         if self._openid_configuration is not None:
             return self._openid_configuration
 

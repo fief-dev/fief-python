@@ -2,7 +2,7 @@
 
 import uuid
 from functools import wraps
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 from flask import g, request
 
@@ -168,9 +168,9 @@ class FiefAuth:
         self,
         *,
         optional: bool = False,
-        scope: Optional[List[str]] = None,
+        scope: Optional[list[str]] = None,
         acr: Optional[FiefACR] = None,
-        permissions: Optional[List[str]] = None,
+        permissions: Optional[list[str]] = None,
     ):
         """
         Decorator to check if a request is authenticated.
@@ -239,9 +239,9 @@ class FiefAuth:
         self,
         *,
         optional: bool = False,
-        scope: Optional[List[str]] = None,
+        scope: Optional[list[str]] = None,
         acr: Optional[FiefACR] = None,
-        permissions: Optional[List[str]] = None,
+        permissions: Optional[list[str]] = None,
         refresh: bool = False,
     ):
         """
