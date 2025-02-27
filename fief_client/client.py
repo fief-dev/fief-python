@@ -149,23 +149,27 @@ class FiefRequestError(FiefError):
         super().__init__(self.message)
 
 
-class FiefAccessTokenInvalid(FiefError):
+class FiefAccessTokenError(FiefError):
+    """Base for access token errors."""
+
+
+class FiefAccessTokenInvalid(FiefAccessTokenError):
     """The access token is invalid."""
 
 
-class FiefAccessTokenExpired(FiefError):
+class FiefAccessTokenExpired(FiefAccessTokenError):
     """The access token is expired."""
 
 
-class FiefAccessTokenMissingScope(FiefError):
+class FiefAccessTokenMissingScope(FiefAccessTokenError):
     """The access token is missing a required scope."""
 
 
-class FiefAccessTokenACRTooLow(FiefError):
+class FiefAccessTokenACRTooLow(FiefAccessTokenError):
     """The access token doesn't meet the minimum ACR level."""
 
 
-class FiefAccessTokenMissingPermission(FiefError):
+class FiefAccessTokenMissingPermission(FiefAccessTokenError):
     """The access token is missing a required permission."""
 
 
