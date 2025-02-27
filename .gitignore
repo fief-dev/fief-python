@@ -114,3 +114,6 @@ ENV/
 *.db
 
 s3cfg
+
+# vim swap files
+*.swp
