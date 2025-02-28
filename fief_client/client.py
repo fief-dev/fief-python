@@ -93,7 +93,7 @@ class FiefAccessTokenInfo(TypedDict):
     acr: FiefACR
     """Level of Authentication Context class Reference."""
     permissions: list[str]
-    """List of [granted permissions](https://docs.fief.dev/getting-started/access-control/) for this user."""
+    """List of [granted permissions](https://docs.fief.dev/configure/access-control/) for this user."""
     access_token: str
     """Access token you can use to call the Fief API."""
 
@@ -127,11 +127,11 @@ class FiefUserInfo(TypedDict):
     """
     tenant_id: str
     """
-    ID of the [tenant](https://docs.fief.dev/getting-started/tenants/) associated to the user.
+    ID of the [tenant](https://docs.fief.dev/configure/tenants/) associated to the user.
     """
     fields: dict[str, Any]
     """
-    [User fields](https://docs.fief.dev/getting-started/user-fields/) values for this user, indexed by their slug.
+    [User fields](https://docs.fief.dev/configure/user-fields/) values for this user, indexed by their slug.
     """
 
 
@@ -188,7 +188,7 @@ class BaseFief:
 
     If you're implementing a desktop app, it's not recommended to use it,
     since it can be easily found by the end-user in the source code.
-    The recommended way is to use a [Public client](https://docs.fief.dev/getting-started/clients/#public-clients).
+    The recommended way is to use a [Public client](https://docs.fief.dev/configure/clients/#public-clients).
     """
     encryption_key: Optional[jwk.JWK] = None
     """"""
@@ -218,12 +218,12 @@ class BaseFief:
         :param client_secret: Secret of your Fief client.
         If you're implementing a desktop app, it's not recommended to use it,
         since it can be easily found by the end-user in the source code.
-        The recommended way is to use a [Public client](https://docs.fief.dev/getting-started/clients/#public-clients).
+        The recommended way is to use a [Public client](https://docs.fief.dev/configure/clients/#public-clients).
         :param encryption_key: Encryption key of your Fief client.
         Necessary only if [ID Token encryption](https://docs.fief.dev/going-further/id-token-encryption/) is enabled.
-        :param verify: Corresponds to the [verify parameter of HTTPX](https://www.python-httpx.org/advanced/#changing-the-verification-defaults).
+        :param verify: Corresponds to the [verify parameter of HTTPX](https://www.python-httpx.org/advanced/ssl/#enabling-and-disabling-verification).
         Useful to customize SSL connection handling.
-        :param cert: Corresponds to the [cert parameter of HTTPX](https://www.python-httpx.org/advanced/#client-side-certificates).
+        :param cert: Corresponds to the [cert parameter of HTTPX](https://www.python-httpx.org/advanced/ssl/#client-side-certificates).
         Useful to customize SSL connection handling.
         """
         self.base_url = base_url
@@ -640,7 +640,7 @@ class Fief(BaseFief):
     ) -> FiefAccessTokenInfo:
         """
         Check if an access token is valid and optionally that it has a required list of scopes,
-        or a required list of [permissions](https://docs.fief.dev/getting-started/access-control/).
+        or a required list of [permissions](https://docs.fief.dev/configure/access-control/).
         Returns a `FiefAccessTokenInfo`.
 
         :param access_token: The access token to validate.
@@ -737,7 +737,7 @@ class Fief(BaseFief):
 
         **Example: Update user field**
 
-        To update [user field](https://docs.fief.dev/getting-started/user-fields/) values, you need to nest them into a `fields` dictionary, indexed by their slug.
+        To update [user field](https://docs.fief.dev/configure/user-fields/) values, you need to nest them into a `fields` dictionary, indexed by their slug.
 
         ```py
         userinfo = fief.update_profile("ACCESS_TOKEN", { "fields": { "first_name": "Anne" } })
@@ -1068,7 +1068,7 @@ class FiefAsync(BaseFief):
     ) -> FiefAccessTokenInfo:
         """
         Check if an access token is valid and optionally that it has a required list of scopes,
-        or a required list of [permissions](https://docs.fief.dev/getting-started/access-control/).
+        or a required list of [permissions](https://docs.fief.dev/configure/access-control/).
         Returns a `FiefAccessTokenInfo`.
 
         :param access_token: The access token to validate.
@@ -1167,7 +1167,7 @@ class FiefAsync(BaseFief):
 
         **Example: Update user field**
 
-        To update [user field](https://docs.fief.dev/getting-started/user-fields/) values, you need to nest them into a `fields` dictionary, indexed by their slug.
+        To update [user field](https://docs.fief.dev/configure/user-fields/) values, you need to nest them into a `fields` dictionary, indexed by their slug.
 
         ```py
         userinfo = await fief.update_profile("ACCESS_TOKEN", { "fields": { "first_name": "Anne" } })
