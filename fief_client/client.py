@@ -142,10 +142,11 @@ class FiefError(Exception):
 class FiefRequestError(FiefError):
     """The request to Fief server resulted in an error."""
 
-    def __init__(self, status_code: int, detail: str) -> None:
+    def __init__(self, url: str, status_code: int, detail: str) -> None:
+        self.url = url
         self.status_code = status_code
         self.detail = detail
-        self.message = f"[{status_code}] - {detail}"
+        self.message = f"[{url}] [{status_code}] - {detail}"
         super().__init__(self.message)
 
 
@@ -491,7 +492,15 @@ class BaseFief:
 
     def _handle_request_error(self, response: httpx.Response):
         if response.is_error:
-            raise FiefRequestError(response.status_code, response.text)
+            raise FiefRequestError(str(response.url), response.status_code, response.text)
+
+    @contextlib.contextmanager
+    def _handle_json_decode_error(self, response: httpx.Response):
+        try:
+            yield
+        except json.decoder.JSONDecodeError as e:
+            text = f"[{repr(e)}]\n{response.text}"
+            raise FiefRequestError(str(response.url), response.status_code, text)
 
 
 class Fief(BaseFief):
@@ -886,7 +895,9 @@ class Fief(BaseFief):
         with self._get_httpx_client() as client:
             request = self._get_openid_configuration_request(client)
             response = client.send(request)
-            json = response.json()
+            self._handle_request_error(response)
+            with self._handle_json_decode_error(response):
+                json = response.json()
             self._openid_configuration = json
             return json
 
@@ -1318,7 +1329,9 @@ class FiefAsync(BaseFief):
         async with self._get_httpx_client() as client:
             request = self._get_openid_configuration_request(client)
             response = await client.send(request)
-            json = response.json()
+            self._handle_request_error(response)
+            with self._handle_json_decode_error(response):
+                json = response.json()
             self._openid_configuration = json
             return json
 
